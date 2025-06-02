@@ -300,25 +300,24 @@ const PersonalityTrip = () => {
   return (
     <div 
       className="min-h-screen overflow-x-hidden relative"
-      style={{
-        background: raveMode ? `
-          radial-gradient(circle at ${mousePos.x}px ${mousePos.y}px, rgba(138, 43, 226, 0.6) 0%, transparent 40%),
-          radial-gradient(circle at ${100 - mousePos.x/8}% ${100 - mousePos.y/8}%, rgba(255, 20, 147, 0.5) 0%, transparent 50%),
-          radial-gradient(ellipse at center, rgba(0, 191, 255, 0.3) 0%, transparent 70%),
-          linear-gradient(45deg, #000000 0%, #1a0033 20%, #330066 40%, #1a0033 60%, #000000 80%, #000000 100%)
-        ` : `
-          linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)
-        `,
-        filter: flashActive 
-          ? 'brightness(4) saturate(3) hue-rotate(90deg)' 
-          : raveMode 
-            ? 'brightness(1.4) contrast(1.2) saturate(1.3)' 
-            : 'brightness(1) contrast(1) saturate(1)',
-        backgroundSize: raveMode ? '400% 400%, 300% 300%, 200% 200%, 100% 100%' : '100% 100%',
-        animation: raveMode 
-          ? 'backgroundShift 6s ease infinite, backgroundPulse 2s ease-in-out infinite alternate' 
-          : 'none'
-      }}
+              style={{
+          background: raveMode ? `
+            radial-gradient(circle at ${mousePos.x}px ${mousePos.y}px, rgba(138, 43, 226, 0.6) 0%, transparent 40%),
+            radial-gradient(circle at ${100 - mousePos.x/8}% ${100 - mousePos.y/8}%, rgba(255, 20, 147, 0.5) 0%, transparent 50%),
+            radial-gradient(ellipse at center, rgba(0, 191, 255, 0.3) 0%, transparent 70%),
+            linear-gradient(45deg, #000000 0%, #1a0033 20%, #330066 40%, #1a0033 60%, #000000 80%, #000000 100%)
+          ` : `
+            linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)
+          `,
+          filter: flashActive 
+            ? 'brightness(4) saturate(3) hue-rotate(90deg)' 
+            : raveMode 
+              ? 'brightness(1.4) contrast(1.2) saturate(1.3)' 
+              : 'brightness(1) contrast(1) saturate(1)',
+          animation: raveMode 
+            ? 'backgroundShift 6s ease infinite, backgroundPulse 2s ease-in-out infinite alternate' 
+            : 'none'
+        }}
     >
       {/* RAVE MODE BUTTON */}
       <div className="fixed top-6 right-6 z-50">
@@ -337,7 +336,7 @@ const PersonalityTrip = () => {
               '0 0 10px rgba(120, 120, 120, 0.3)'
           }}
         >
-          {raveMode ? '🎪 RAVE ON!' : '🌙 Modo Zen'}
+{raveMode ? '🎪 RAVE ON!' : '🎵 RAVE OFF'}
         </Button>
       </div>
 
@@ -548,10 +547,22 @@ const PersonalityTrip = () => {
 
       <style jsx>{`
         @keyframes backgroundShift {
-          0%, 100% { background-position: 0% 50%; }
-          25% { background-position: 100% 0%; }
-          50% { background-position: 100% 100%; }
-          75% { background-position: 0% 100%; }
+          0%, 100% { 
+            background-position: 0% 50%;
+            background-size: 400% 400%;
+          }
+          25% { 
+            background-position: 100% 0%;
+            background-size: 300% 300%;
+          }
+          50% { 
+            background-position: 100% 100%;
+            background-size: 200% 200%;
+          }
+          75% { 
+            background-position: 0% 100%;
+            background-size: 400% 400%;
+          }
         }
 
         @keyframes backgroundPulse {
