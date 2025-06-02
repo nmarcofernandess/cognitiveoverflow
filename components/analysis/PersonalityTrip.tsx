@@ -89,31 +89,15 @@ const PersonalityTrip = () => {
 
   // RAVE MODE ULTIMATE EXPLOSION
   const triggerRaveMode = () => {
-    setRaveMode(!raveMode);
-    if (!raveMode) {
+    const newMode = !raveMode;
+    setRaveMode(newMode);
+    
+    if (newMode) {
+      // Ativa explosão visual
       setExplosionActive(true);
-      setTimeout(() => setExplosionActive(false), 1000);
-    }
-  };
-
-  // Flash effect enhanced
-  const triggerFlash = () => {
-    setFlashActive(true);
-    setTimeout(() => setFlashActive(false), 200);
-  };
-
-  // MEGA EXPLOSION - CONSERTADO
-  const triggerExplosion = () => {
-    setExplosionActive(true);
-    triggerFlash();
-    
-    // Ativa rave mode se não estiver ativo
-    if (!raveMode) {
-      setRaveMode(true);
-    }
-    
-    // Gera explosão de cogumelos se estiver no rave mode
-    if (raveMode) {
+      triggerFlash();
+      
+      // Gera explosão de cogumelos
       const newMushrooms: Array<{id: number, x: number, y: number, size: number, rotation: number}> = [];
       for (let i = 0; i < 15; i++) {
         newMushrooms.push({
@@ -125,9 +109,15 @@ const PersonalityTrip = () => {
         });
       }
       setMushrooms(prev => [...prev, ...newMushrooms]);
+      
+      setTimeout(() => setExplosionActive(false), 1500);
     }
-    
-    setTimeout(() => setExplosionActive(false), 1500);
+  };
+
+  // Flash effect enhanced
+  const triggerFlash = () => {
+    setFlashActive(true);
+    setTimeout(() => setFlashActive(false), 200);
   };
 
   const PersonalityCard = ({ title, content, index, emoji, raveMode, mousePos, onClick }: PersonalityCardProps) => {
@@ -400,7 +390,7 @@ const PersonalityTrip = () => {
         {/* Header Épico */}
         <header 
           className="text-center mb-16 p-16 relative cursor-pointer transition-transform hover:scale-105"
-          onClick={triggerExplosion}
+          onClick={triggerRaveMode}
           style={{
             transform: raveMode ? 'scale(1.1) rotate(2deg)' : 'scale(1) rotate(0deg)'
           }}
@@ -552,26 +542,7 @@ const PersonalityTrip = () => {
             "A loucura é apenas criatividade incompreendida" - Marco 2024
           </p>
           
-          {/* MEGA RAVE BUTTON - FUNCIONANDO */}
-          <Button
-            onClick={triggerExplosion}
-            color={raveMode ? "success" : "default"}
-            variant="shadow"
-            size="lg"
-            className={`font-bold text-xl ${raveMode ? 'animate-pulse' : ''}`}
-            style={{
-              background: raveMode 
-                ? 'linear-gradient(45deg, #FF1493, #8A2BE2, #00BFFF, #FFD700)'
-                : 'linear-gradient(45deg, #555555, #777777)',
-              backgroundSize: raveMode ? '400% 400%' : '100% 100%',
-              animation: raveMode ? 'backgroundShift 3s ease infinite' : 'none',
-              boxShadow: raveMode 
-                ? '0 0 40px rgba(138, 43, 226, 0.8), 0 0 80px rgba(255, 20, 147, 0.6)'
-                : '0 0 10px rgba(120, 120, 120, 0.3)'
-            }}
-          >
-            {raveMode ? '🎆 EXPLODIR TUDO! 🎆' : '💥 Explodir Tudo'}
-          </Button>
+
         </div>
       </div>
 
