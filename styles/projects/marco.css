@@ -1,0 +1,20 @@
+/* Marco's Personality Trip - Estilos Específicos */
+
+/* Variáveis CSS para Marco */
+:root {
+  --marco-purple: #8a2be2;
+  --marco-pink: #ff1493;
+  --marco-cyan: #00bfff;
+  --marco-yellow: #ffd700;
+}
+
+/* Estilos específicos do Marco que não devem vazar para outros projetos */
+.personality-card {
+  /* Estilos específicos dos cards de personalidade */
+  transition: all 0.3s ease;
+}
+
+.personality-card:hover {
+  /* Efeitos hover específicos */
+  transform: translateY(-5px);
+} 

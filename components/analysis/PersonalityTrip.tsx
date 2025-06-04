@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
+import { Icon } from '@iconify/react';
+import Link from "next/link";
 
 interface PersonalityData {
   title: string;
@@ -319,6 +321,23 @@ const PersonalityTrip = () => {
             : 'none'
         }}
     >
+      {/* NAVIGATION BUTTONS */}
+      <div className="fixed top-6 left-6 z-50">
+        <Link href="/">
+          <Button
+            size="lg"
+            className={`font-mono font-bold backdrop-blur-lg transition-all ${
+              raveMode 
+                ? 'bg-purple-500/20 border border-purple-500/50 text-purple-300 hover:bg-purple-500/30 hover:border-purple-400'
+                : 'bg-gray-500/20 border border-gray-500/50 text-gray-300 hover:bg-gray-500/30 hover:border-gray-400'
+            }`}
+          >
+            <Icon icon="lucide:arrow-left" width={20} height={20} />
+            COGNITIVE OVERFLOW
+          </Button>
+        </Link>
+      </div>
+
       {/* RAVE MODE BUTTON */}
       <div className="fixed top-6 right-6 z-50">
         <Button
