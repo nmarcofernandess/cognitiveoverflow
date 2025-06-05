@@ -60,6 +60,19 @@ export default function CognitiveOverflowDashboard() {
       emoji: "💊",
       status: "ACTIVE",
       tags: ["Reality", "Simulation", "Philosophy"]
+    },
+    {
+      id: 'recursos',
+      title: "RECURSOS VAULT",
+      subtitle: "Knowledge Database System",
+      description: "Banco de conhecimento protegido onde insights, recursos e documentação são armazenados de forma persistente. Seu segundo cérebro digital.",
+      path: "/recursos",
+      color: "from-amber-500/20 to-orange-500/20",
+      borderColor: "border-amber-500/40",
+      glowColor: "shadow-amber-500/30",
+      emoji: "🔐",
+      status: "ACTIVE",
+      tags: ["Knowledge", "Database", "Insights"]
     }
   ];
 
@@ -138,7 +151,7 @@ export default function CognitiveOverflowDashboard() {
             </span>
           </h2>
           
-          <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8 max-w-7xl mx-auto">
             {projects.map((project, index) => (
               <Card 
                 key={project.id}
@@ -152,7 +165,9 @@ export default function CognitiveOverflowDashboard() {
                     ),
                     ${project.color.includes('purple') ? 
                       'radial-gradient(circle at top right, rgba(138, 43, 226, 0.1), transparent 60%)' :
-                      'radial-gradient(circle at top right, rgba(34, 197, 94, 0.1), transparent 60%)'
+                      project.color.includes('green') ?
+                      'radial-gradient(circle at top right, rgba(34, 197, 94, 0.1), transparent 60%)' :
+                      'radial-gradient(circle at top right, rgba(251, 191, 36, 0.1), transparent 60%)'
                     }
                   `
                 }}
@@ -197,7 +212,9 @@ export default function CognitiveOverflowDashboard() {
                         className={`${
                           project.id === 'marco' 
                             ? 'bg-purple-500/20 text-purple-300' 
-                            : 'bg-green-500/20 text-green-300'
+                            : project.id === 'matrix'
+                            ? 'bg-green-500/20 text-green-300'
+                            : 'bg-amber-500/20 text-amber-300'
                         }`}
                       >
                         {tag}
@@ -211,7 +228,9 @@ export default function CognitiveOverflowDashboard() {
                       className={`w-full font-mono font-bold transition-all group-hover:scale-105 ${
                         project.id === 'marco'
                           ? 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/50 text-purple-300 hover:from-purple-500/50 hover:to-pink-500/50'
-                          : 'bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-500/50 text-green-300 hover:from-green-500/50 hover:to-emerald-500/50'
+                          : project.id === 'matrix'
+                          ? 'bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-500/50 text-green-300 hover:from-green-500/50 hover:to-emerald-500/50'
+                          : 'bg-gradient-to-r from-amber-500/30 to-orange-500/30 border border-amber-500/50 text-amber-300 hover:from-amber-500/50 hover:to-orange-500/50'
                       }`}
                     >
                       ENTER PROJECT →
@@ -224,10 +243,16 @@ export default function CognitiveOverflowDashboard() {
                   <div className={`w-full h-0.5 ${
                     project.id === 'marco' 
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
-                      : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                      : project.id === 'matrix'
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                      : 'bg-gradient-to-r from-amber-500 to-orange-500'
                   } animate-pulse`}></div>
                   <div className={`absolute right-0 -top-1 w-1.5 h-1.5 ${
-                    project.id === 'marco' ? 'bg-pink-500' : 'bg-emerald-500'
+                    project.id === 'marco' 
+                      ? 'bg-pink-500' 
+                      : project.id === 'matrix'
+                      ? 'bg-emerald-500'
+                      : 'bg-orange-500'
                   } rounded-full animate-ping`}></div>
                 </div>
               </Card>
