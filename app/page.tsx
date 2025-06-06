@@ -73,6 +73,19 @@ export default function CognitiveOverflowDashboard() {
       emoji: "🔐",
       status: "ACTIVE",
       tags: ["Knowledge", "Database", "Insights"]
+    },
+    {
+      id: 'apatia',
+      title: "APATIA LANDING",
+      subtitle: "Anti-Motivation Protocol",
+      description: "Uma landing page única criada a partir dos slides do Manus.ia. Uma jornada visual sobre desmotivação, propósito e a arte de não dar a mínima.",
+      path: "/apatia",
+      color: "from-slate-500/20 to-gray-500/20",
+      borderColor: "border-slate-500/40",
+      glowColor: "shadow-slate-500/30",
+      emoji: "😶",
+      status: "ACTIVE",
+      tags: ["Landing", "Psychology", "Anti-Motivation"]
     }
   ];
 
@@ -167,7 +180,9 @@ export default function CognitiveOverflowDashboard() {
                       'radial-gradient(circle at top right, rgba(138, 43, 226, 0.1), transparent 60%)' :
                       project.color.includes('green') ?
                       'radial-gradient(circle at top right, rgba(34, 197, 94, 0.1), transparent 60%)' :
-                      'radial-gradient(circle at top right, rgba(251, 191, 36, 0.1), transparent 60%)'
+                      project.color.includes('amber') ?
+                      'radial-gradient(circle at top right, rgba(251, 191, 36, 0.1), transparent 60%)' :
+                      'radial-gradient(circle at top right, rgba(100, 116, 139, 0.1), transparent 60%)'
                     }
                   `
                 }}
@@ -209,13 +224,15 @@ export default function CognitiveOverflowDashboard() {
                         key={i} 
                         size="sm" 
                         variant="flat"
-                        className={`${
-                          project.id === 'marco' 
-                            ? 'bg-purple-500/20 text-purple-300' 
-                            : project.id === 'matrix'
-                            ? 'bg-green-500/20 text-green-300'
-                            : 'bg-amber-500/20 text-amber-300'
-                        }`}
+                                              className={`${
+                        project.id === 'marco' 
+                          ? 'bg-purple-500/20 text-purple-300' 
+                          : project.id === 'matrix'
+                          ? 'bg-green-500/20 text-green-300'
+                          : project.id === 'recursos'
+                          ? 'bg-amber-500/20 text-amber-300'
+                          : 'bg-slate-500/20 text-slate-300'
+                      }`}
                       >
                         {tag}
                       </Chip>
@@ -230,7 +247,9 @@ export default function CognitiveOverflowDashboard() {
                           ? 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/50 text-purple-300 hover:from-purple-500/50 hover:to-pink-500/50'
                           : project.id === 'matrix'
                           ? 'bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-500/50 text-green-300 hover:from-green-500/50 hover:to-emerald-500/50'
-                          : 'bg-gradient-to-r from-amber-500/30 to-orange-500/30 border border-amber-500/50 text-amber-300 hover:from-amber-500/50 hover:to-orange-500/50'
+                          : project.id === 'recursos'
+                          ? 'bg-gradient-to-r from-amber-500/30 to-orange-500/30 border border-amber-500/50 text-amber-300 hover:from-amber-500/50 hover:to-orange-500/50'
+                          : 'bg-gradient-to-r from-slate-500/30 to-gray-500/30 border border-slate-500/50 text-slate-300 hover:from-slate-500/50 hover:to-gray-500/50'
                       }`}
                     >
                       ENTER PROJECT →
@@ -245,14 +264,18 @@ export default function CognitiveOverflowDashboard() {
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
                       : project.id === 'matrix'
                       ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                      : 'bg-gradient-to-r from-amber-500 to-orange-500'
+                      : project.id === 'recursos'
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                      : 'bg-gradient-to-r from-slate-500 to-gray-500'
                   } animate-pulse`}></div>
                   <div className={`absolute right-0 -top-1 w-1.5 h-1.5 ${
                     project.id === 'marco' 
                       ? 'bg-pink-500' 
                       : project.id === 'matrix'
                       ? 'bg-emerald-500'
-                      : 'bg-orange-500'
+                      : project.id === 'recursos'
+                      ? 'bg-orange-500'
+                      : 'bg-gray-500'
                   } rounded-full animate-ping`}></div>
                 </div>
               </Card>
