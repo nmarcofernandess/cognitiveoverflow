@@ -16,8 +16,6 @@ export default function NeuralSystemPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
 
-
-
   const handleTabChange = (newTab: string) => {
     setActiveTab(newTab);
     
@@ -80,102 +78,61 @@ export default function NeuralSystemPage() {
             🧠 MARCO NEURAL SYSTEM v2.0
           </motion.div>
 
-          <MatrixLogoutButton redirectTo="/recursos" />
+          <MatrixLogoutButton redirectTo="/neural" />
         </div>
       </div>
 
       {/* Tab Navigation */}
-      <div className="relative z-10 border-b border-slate-800/50">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-1 py-4">
-            {tabs.map((tab) => (
-              <motion.button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`flex items-center gap-3 px-6 py-3 rounded-lg font-mono font-medium transition-all duration-300 ${
-                  activeTab === tab.id
-                    ? 'bg-slate-800/60 border border-emerald-400/40 text-emerald-400 shadow-emerald-400/10 shadow-lg'
-                    : 'hover:bg-slate-800/30 text-slate-300 hover:text-slate-100 border border-transparent'
-                }`}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Icon 
-                  icon={tab.icon} 
-                  width={20} 
-                  height={20} 
-                  className={activeTab === tab.id ? 'text-emerald-400' : tab.color}
-                />
-                <div className="text-left">
-                  <div className="text-sm font-bold">{tab.label}</div>
-                  <div className="text-xs opacity-70">{tab.description}</div>
-                </div>
-              </motion.button>
-            ))}
-          </div>
+      <div className="relative z-10 px-6 py-4 border-b border-slate-800/30">
+        <div className="flex gap-2 justify-center max-w-4xl mx-auto">
+          {tabs.map((tab) => (
+            <motion.button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id)}
+              className={`
+                px-6 py-3 rounded-lg font-mono font-medium transition-all duration-300 min-w-[140px]
+                flex items-center justify-center gap-2 backdrop-blur-sm
+                ${activeTab === tab.id 
+                  ? `bg-slate-700/60 ${tab.color} border border-slate-600` 
+                  : 'bg-slate-800/40 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300 border border-slate-700/50'
+                }
+              `}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Icon icon={tab.icon} width={18} height={18} />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </motion.button>
+          ))}
+        </div>
+        
+        {/* Tab Description */}
+        <div className="text-center mt-3">
+          <p className="text-slate-400 font-mono text-sm">
+            {tabs.find(tab => tab.id === activeTab)?.description}
+          </p>
         </div>
       </div>
 
-      {/* Tab Content */}
-      <NeuralProvider>
-        <div className="relative z-10 max-w-7xl mx-auto p-6">
-          <AnimatePresence mode="wait">
-            {activeTab === 'overview' && (
+      {/* Main Content */}
+      <div className="relative z-10 px-6 py-8">
+        <div className="max-w-7xl mx-auto">
+          <NeuralProvider>
+            <AnimatePresence mode="wait">
               <motion.div
-                key="overview"
+                key={activeTab}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
+                className="min-h-[600px]"
               >
-                <OverviewTab onTabChange={handleTabChange} />
+                {activeTab === 'overview' && <OverviewTab />}
+                {activeTab === 'people' && <PeopleTab />}
+                {activeTab === 'projects' && <ProjectsTab />}
               </motion.div>
-            )}
-            
-            {activeTab === 'people' && (
-              <motion.div
-                key="people"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <PeopleTab onTabChange={handleTabChange} />
-              </motion.div>
-            )}
-            
-            {activeTab === 'projects' && (
-              <motion.div
-                key="projects"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <ProjectsTab onTabChange={handleTabChange} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </NeuralProvider>
-
-      {/* Footer Status */}
-      <div className="relative z-10 border-t border-slate-800/50 bg-slate-950/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center text-xs">
-            <div className="text-slate-500 font-mono">
-              Marco Neural System v2.0 • Cognitive Overflow Integration
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-emerald-400 font-mono">
-                <Icon icon="lucide:wifi" width={14} height={14} />
-                Supabase Connected
-              </div>
-              <div className="text-slate-500 font-mono">
-                Last sync: {new Date().toLocaleTimeString('pt-BR')}
-              </div>
-            </div>
-          </div>
+            </AnimatePresence>
+          </NeuralProvider>
         </div>
       </div>
     </div>

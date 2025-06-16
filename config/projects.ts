@@ -63,22 +63,22 @@ export const projects: ProjectMetadata[] = [
     }
   },
   {
-    id: 'recursos',
-    title: "RECURSOS VAULT",
-    subtitle: "Knowledge Database System",
-    description: "Banco de conhecimento protegido onde insights, recursos e documentação são armazenados de forma persistente. Seu segundo cérebro digital.",
-    path: "/recursos",
+    id: 'neural-system',
+    title: "NEURAL SYSTEM",
+    subtitle: "Marco's Neural Database",
+    description: "Sistema neural avançado para gestão de conhecimento, pessoas e projetos. Seu segundo cérebro digital com IA integrada.",
+    path: "/neural",
     status: "ACTIVE",
     protected: true, // 🔐 MATRIX PROTECTED
-    tags: ["Knowledge", "Database", "Insights"],
+    tags: ["Neural", "AI", "Knowledge", "Database"],
     colors: {
-      primary: "from-amber-500/20 to-orange-500/20",
-      secondary: "amber-500",
-      accent: "orange-500",
-      borderColor: "border-amber-500/40",
-      glowColor: "shadow-amber-500/30"
+      primary: "from-emerald-500/20 to-green-500/20",
+      secondary: "emerald-500",
+      accent: "green-500",
+      borderColor: "border-emerald-500/40",
+      glowColor: "shadow-emerald-500/30"
     },
-    emoji: "🔐",
+    emoji: "🧠",
     authConfig: {
       title: "NEURAL SYSTEM ACCESS",
       subtitle: "Enter the Matrix to access your Neural Database"

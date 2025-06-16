@@ -14,8 +14,18 @@ export default function AutoMatrixLayout({ children }: AutoMatrixLayoutProps) {
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
 
-  // Extrair ID do projeto da rota (ex: "/matrix" -> "matrix")
-  const projectId = pathname.slice(1);
+  // Extrair ID do projeto da rota (ex: "/matrix" -> "matrix", "/neural" -> "neural-system")
+  const routeToProjectMap: { [key: string]: string } = {
+    'neural': 'neural-system',
+    'matrix': 'matrix',
+    'marco': 'marco',
+    'tokenflow': 'tokenflow',
+    'comic-builder': 'comic-builder',
+    'apatia': 'apatia'
+  };
+  
+  const routeName = pathname.slice(1);
+  const projectId = routeToProjectMap[routeName] || routeName;
   const project = getProjectById(projectId);
 
   useEffect(() => {

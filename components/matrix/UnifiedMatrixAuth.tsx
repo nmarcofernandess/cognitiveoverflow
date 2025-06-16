@@ -34,7 +34,7 @@ export default function UnifiedMatrixAuth({
     // Simular delay de validação para efeito Matrix
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    if (password === 'redpill') {
+    if (password === 'followtherabit') {
       // Auth global que libera todas as rotas protegidas
       sessionStorage.setItem('matrix_global_auth', 'redpill_validated');
       sessionStorage.setItem('matrix_global_auth_timestamp', Date.now().toString());

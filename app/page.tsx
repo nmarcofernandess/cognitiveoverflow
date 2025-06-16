@@ -173,18 +173,10 @@ export default function CognitiveOverflowDashboard() {
               COGNITIVE PROJECTS
             </span>
           </h2>
-          <div className="text-center mb-8 space-y-2">
+          <div className="text-center mb-8">
             <p className="text-gray-400 font-mono">
               🔵 Blue border = Public access • 🔴 Red border = Matrix protected
             </p>
-            <div className="text-center">
-              <Chip 
-                size="lg"
-                className="bg-red-500/20 border border-red-500/40 text-red-400 font-mono"
-              >
-                🔑 Protected password: redpill
-              </Chip>
-            </div>
           </div>
           
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8 max-w-7xl mx-auto">
