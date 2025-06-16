@@ -75,34 +75,7 @@ html, body {
   z-index: 3;
 }
 
-.matrix-rain {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.matrix-rain-column {
-  position: absolute;
-  top: -100%;
-  color: rgba(0, 255, 0, 0.6); /* Softer base color */
-  font-size: 1.2rem;
-  font-family: 'VT323', monospace;
-  line-height: 1;
-  white-space: pre;
-  text-align: center;
-  animation: matrix-rain linear infinite;
-  text-shadow: 0 0 3px rgba(0, 255, 0, 0.4); /* Subtle glow */
-  letter-spacing: 1px;
-}
-
-@keyframes matrix-rain {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
-}
+/* Matrix rain styles removed - now using Canvas implementation */
 
 .terminal-container {
   position: relative; 
@@ -774,39 +747,7 @@ html, body {
   75% { content: "> Initializing..."; }
 }
 
-/* Enhanced Matrix rain effect */
-.matrix-rain-column {
-  position: absolute;
-  top: -100%;
-  color: rgba(0, 255, 0, 0.6); /* Softer base color */
-  font-size: 1.2rem;
-  font-family: 'VT323', monospace;
-  line-height: 1;
-  white-space: pre;
-  text-align: center;
-  animation: matrix-rain linear infinite;
-  text-shadow: 0 0 3px rgba(0, 255, 0, 0.4); /* Subtle glow */
-  letter-spacing: 1px;
-}
-
-/* Some columns are brighter for more visual depth */
-.bright-column {
-  color: rgba(0, 255, 0, 0.75);
-  text-shadow: 0 0 5px rgba(0, 255, 0, 0.6); 
-}
-
-/* Individual bright characters scattered throughout */
-.bright-char {
-  color: rgba(0, 255, 0, 1); 
-  text-shadow: 0 0 8px rgba(0, 255, 0, 0.8);
-  opacity: 0.9;
-}
-
-/* Different animation speeds for different columns */
-@keyframes matrix-rain {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
-}
+/* Matrix rain styles removed - now using sophisticated Canvas implementation */
 
 /* Landing page styles */
 .landing-container {

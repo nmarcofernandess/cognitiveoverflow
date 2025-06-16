@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Textarea } from "@heroui/input";
-
 import { Chip } from "@heroui/chip";
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from '../../lib/supabase';
+import { useNeuralContext } from './context/NeuralContext';
+import { CollapsibleForm, CollapsibleSection } from './CollapsibleForm';
+import { Breadcrumb } from './Breadcrumb';
 
 interface Person {
   id: string;
@@ -31,385 +33,32 @@ interface PersonNote {
   created_at: string;
 }
 
-interface PersonCardProps {
-  person: Person;
-  isExpanded: boolean;
-  onToggle: () => void;
-  onUpdate: (person: Person) => void;
-  onDelete: (id: string) => void;
-  onAddNote: (personId: string, noteData: any) => void;
-  onDeleteNote: (noteId: string, personId: string) => void;
-}
-
-function PersonCard({ person, isExpanded, onToggle, onUpdate, onDelete, onAddNote, onDeleteNote }: PersonCardProps) {
-  const [editingTldr, setEditingTldr] = useState(false);
-  const [editingRelation, setEditingRelation] = useState(false);
-  const [tempTldr, setTempTldr] = useState(person.tldr || '');
-  const [tempRelation, setTempRelation] = useState(person.relation);
-  const [newNote, setNewNote] = useState({ title: '', content: '', tags: '' });
-  const [isSaving, setIsSaving] = useState(false);
-  const tldrInputRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleTldrEdit = () => {
-    setEditingTldr(true);
-    setTimeout(() => tldrInputRef.current?.focus(), 0);
-  };
-
-  const handleSaveTldr = async () => {
-    if (tempTldr === person.tldr) {
-      setEditingTldr(false);
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from('people')
-        .update({ tldr: tempTldr, updated_at: new Date().toISOString() })
-        .eq('id', person.id);
-
-      if (error) {
-        console.error('Erro ao atualizar TL;DR:', error);
-        return;
-      }
-
-      onUpdate({
-        ...person,
-        tldr: tempTldr,
-        updated_at: new Date().toISOString()
-      });
-      setEditingTldr(false);
-    } catch (error) {
-      console.error('Erro ao atualizar pessoa:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveRelation = async () => {
-    if (tempRelation === person.relation) {
-      setEditingRelation(false);
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from('people')
-        .update({ relation: tempRelation, updated_at: new Date().toISOString() })
-        .eq('id', person.id);
-
-      if (error) {
-        console.error('Erro ao atualizar relação:', error);
-        return;
-      }
-
-      onUpdate({
-        ...person,
-        relation: tempRelation,
-        updated_at: new Date().toISOString()
-      });
-      setEditingRelation(false);
-    } catch (error) {
-      console.error('Erro ao atualizar pessoa:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleAddNote = async () => {
-    if (!newNote.title.trim()) return;
-
-    const noteData = {
-      title: newNote.title.trim(),
-      content: newNote.content.trim(),
-      tags: newNote.tags.split(',').map(t => t.trim()).filter(Boolean)
-    };
-
-    await onAddNote(person.id, noteData);
-    setNewNote({ title: '', content: '', tags: '' });
-  };
-
-  const getRelativeTime = (dateString: string) => {
-    try {
-      const now = new Date();
-      const date = new Date(dateString);
-      const diffInMs = now.getTime() - date.getTime();
-      const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-      const diffInHours = Math.floor(diffInMinutes / 60);
-      const diffInDays = Math.floor(diffInHours / 24);
-      
-      if (diffInMinutes < 1) return 'agora';
-      if (diffInMinutes < 60) return `${diffInMinutes}m`;
-      if (diffInHours < 24) return `${diffInHours}h`;
-      if (diffInDays < 30) return `${diffInDays}d`;
-      return date.toLocaleDateString('pt-BR');
-    } catch {
-      return 'agora';
-    }
-  };
-
-  return (
-    <Card className="bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-blue-400/40 transition-all duration-300 hover:shadow-lg hover:shadow-blue-400/10">
-      <CardBody className="p-0">
-        {/* Header sempre visível */}
-        <div className="flex items-center gap-4 p-4">
-          <div className="flex-1 min-w-0" onClick={onToggle}>
-            <div className="flex items-center gap-3 mb-2 cursor-pointer">
-              <h3 className="text-lg font-semibold text-slate-100 font-mono">{person.name}</h3>
-              
-              {editingRelation ? (
-                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                  <Input
-                    size="sm"
-                    value={tempRelation}
-                    onChange={(e) => setTempRelation(e.target.value)}
-                    placeholder="Relação..."
-                    className="w-32"
-                    classNames={{
-                      inputWrapper: "bg-slate-800/60 border-slate-600/60",
-                      input: "text-slate-100 font-mono text-sm"
-                    }}
-                  />
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    className="bg-green-600 text-white"
-                    onPress={handleSaveRelation}
-                    isLoading={isSaving}
-                  >
-                    <Icon icon="lucide:check" width={14} height={14} />
-                  </Button>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="bordered"
-                    onPress={() => setEditingRelation(false)}
-                  >
-                    <Icon icon="lucide:x" width={14} height={14} />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-blue-400 capitalize font-mono">{person.relation}</span>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="flat"
-                    className="bg-blue-500/15 border border-blue-400/30 text-blue-400 hover:bg-blue-500/25"
-                    onClick={() => setEditingRelation(true)}
-                  >
-                    <Icon icon="lucide:edit" width={12} height={12} />
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            {editingTldr ? (
-              <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-                <Textarea
-                  ref={tldrInputRef}
-                  value={tempTldr}
-                  onChange={(e) => setTempTldr(e.target.value)}
-                  placeholder="Descrição da pessoa para contexto da IA..."
-                  minRows={2}
-                  classNames={{
-                    inputWrapper: "bg-slate-900/60 border-slate-600/60",
-                    input: "text-slate-100 font-mono text-sm"
-                  }}
-                />
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    className="bg-green-600 text-white"
-                    onPress={handleSaveTldr}
-                    isLoading={isSaving}
-                  >
-                    <Icon icon="lucide:check" width={14} height={14} />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="bordered"
-                    onPress={() => setEditingTldr(false)}
-                  >
-                    <Icon icon="lucide:x" width={14} height={14} />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-2">
-                <p className="text-gray-300 text-sm font-mono flex-1">{person.tldr || 'Sem descrição'}</p>
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="flat"
-                  className="bg-slate-600/40 border border-slate-500/40 text-slate-300 hover:bg-slate-600/60"
-                  onPress={handleTldrEdit}
-                >
-                  <Icon icon="lucide:edit" width={12} height={12} />
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 text-slate-300">
-            <span className="text-xs font-mono">
-              {getRelativeTime(person.updated_at || person.created_at)}
-            </span>
-            
-            <div className="text-sm text-slate-400 font-mono">
-              {person.notes_count || 0} notes
-            </div>
-
-            <div className="flex items-center gap-1">
-              <Button
-                isIconOnly
-                size="sm"
-                variant="flat"
-                className="bg-red-500/15 border border-red-400/30 text-red-400 hover:bg-red-500/25"
-                onClick={() => onDelete(person.id)}
-              >
-                <Icon icon="lucide:trash-2" width={14} height={14} />
-              </Button>
-              
-              <Button
-                isIconOnly
-                size="sm"
-                variant="flat"
-                className="bg-slate-600/40 border border-slate-500/40 text-slate-300 hover:bg-slate-600/60"
-                onPress={onToggle}
-              >
-                <Icon 
-                  icon="lucide:chevron-down" 
-                  width={16} 
-                  height={16}
-                  className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Conteúdo expansível - Notes */}
-        <AnimatePresence>
-          {isExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="overflow-hidden"
-            >
-              <div className="px-4 pb-4">
-                <div className="border-t border-slate-700/50 pt-4 space-y-4">
-                  
-                  {/* Add Note Form */}
-                  <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
-                    <h4 className="font-semibold text-blue-400 mb-3 font-mono">Add New Note</h4>
-                    <div className="space-y-3">
-                      <Input
-                        placeholder="Note title..."
-                        value={newNote.title}
-                        onChange={(e) => setNewNote({...newNote, title: e.target.value})}
-                        classNames={{
-                          inputWrapper: "bg-slate-800/60 border-slate-600/60",
-                          input: "text-slate-100 font-mono"
-                        }}
-                      />
-                      <Textarea
-                        placeholder="Note content..."
-                        value={newNote.content}
-                        onChange={(e) => setNewNote({...newNote, content: e.target.value})}
-                        minRows={3}
-                        classNames={{
-                          inputWrapper: "bg-slate-800/60 border-slate-600/60",
-                          input: "text-slate-100 font-mono"
-                        }}
-                      />
-                      <Input
-                        placeholder="Tags (comma separated)..."
-                        value={newNote.tags}
-                        onChange={(e) => setNewNote({...newNote, tags: e.target.value})}
-                        classNames={{
-                          inputWrapper: "bg-slate-800/60 border-slate-600/60",
-                          input: "text-slate-100 font-mono"
-                        }}
-                      />
-                      <Button 
-                        onClick={handleAddNote}
-                        isDisabled={!newNote.title.trim()}
-                        className="bg-blue-600 hover:bg-blue-500 text-white font-mono"
-                      >
-                        <Icon icon="lucide:plus" width={14} height={14} />
-                        Add Note
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Notes List */}
-                  {person.notes && person.notes.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-blue-400 font-mono">
-                        Notes ({person.notes.length})
-                      </h4>
-                      {person.notes.map(note => (
-                        <div key={note.id} className="bg-slate-900/60 p-4 rounded-lg border-l-4 border-blue-500/60">
-                          <div className="flex justify-between items-start mb-2">
-                            <h5 className="font-semibold text-slate-100 font-mono">{note.title}</h5>
-                            <Button 
-                              isIconOnly
-                              size="sm" 
-                              variant="flat"
-                              onClick={() => onDeleteNote(note.id, person.id)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                            >
-                              <Icon icon="lucide:trash-2" width={14} height={14} />
-                            </Button>
-                          </div>
-                          {note.content && (
-                            <p className="text-slate-300 text-sm mb-3 font-mono">{note.content}</p>
-                          )}
-                          <div className="flex justify-between items-center">
-                            <div className="flex gap-2">
-                              {note.tags?.map(tag => (
-                                <Chip 
-                                  key={tag} 
-                                  size="sm" 
-                                  variant="flat"
-                                  className="bg-slate-700/60 text-slate-300 font-mono"
-                                >
-                                  #{tag}
-                                </Chip>
-                              ))}
-                            </div>
-                            <span className="text-xs text-slate-500 font-mono">
-                              {getRelativeTime(note.created_at)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </CardBody>
-    </Card>
-  );
-}
-
-export default function PeopleTab() {
+export default function PeopleTab({ onTabChange }: { onTabChange?: (tabId: string) => void }) {
+  const { notifyPersonChange } = useNeuralContext();
   const [people, setPeople] = useState<Person[]>([]);
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newPerson, setNewPerson] = useState({
     name: '',
     relation: 'amigo',
     tldr: ''
   });
+
+  // Reset navigation when tab becomes active
+  useEffect(() => {
+    const handleReset = () => {
+      setSelectedPerson(null);
+      setShowAddForm(false);
+    };
+
+    // Listen for custom tab change events
+    window.addEventListener('tab-changed-to-people', handleReset);
+    
+    return () => {
+      window.removeEventListener('tab-changed-to-people', handleReset);
+    };
+  }, []);
 
   useEffect(() => {
     loadPeople();
@@ -459,8 +108,9 @@ export default function PeopleTab() {
     }
   };
 
-  const loadPersonNotes = async (personId: string) => {
+  const loadPersonDetail = async (personId: string) => {
     try {
+      // Carregar notas da pessoa
       const { data: notes, error } = await supabase
         .from('person_notes')
         .select('*')
@@ -469,23 +119,18 @@ export default function PeopleTab() {
 
       if (error) {
         console.error('Erro ao carregar notas:', error);
-        return;
+      } else {
+        // Encontrar a pessoa e adicionar as notas
+        const person = people.find(p => p.id === personId);
+        if (person) {
+          setSelectedPerson({
+            ...person,
+            notes: notes || []
+          });
+        }
       }
-
-      setPeople(prev => prev.map(p => 
-        p.id === personId ? { ...p, notes: notes || [] } : p
-      ));
     } catch (error) {
-      console.error('Erro ao carregar notas:', error);
-    }
-  };
-
-  const handleToggleExpand = (personId: string) => {
-    if (expandedCard === personId) {
-      setExpandedCard(null);
-    } else {
-      setExpandedCard(personId);
-      loadPersonNotes(personId);
+      console.error('Erro ao carregar pessoa:', error);
     }
   };
 
@@ -517,16 +162,11 @@ export default function PeopleTab() {
       
       setNewPerson({ name: '', relation: 'amigo', tldr: '' });
       setShowAddForm(false);
+      notifyPersonChange(); // ✅ Notifica Overview tab!
     } catch (error) {
       console.error('Erro ao criar pessoa:', error);
       alert('Erro ao criar pessoa. Tente novamente.');
     }
-  };
-
-  const handleUpdatePerson = (updatedPerson: Person) => {
-    setPeople(prev => prev.map(p => 
-      p.id === updatedPerson.id ? updatedPerson : p
-    ));
   };
 
   const handleDeletePerson = async (id: string) => {
@@ -547,78 +187,12 @@ export default function PeopleTab() {
       }
 
       setPeople(prev => prev.filter(p => p.id !== id));
-      if (expandedCard === id) {
-        setExpandedCard(null);
+      if (selectedPerson?.id === id) {
+        setSelectedPerson(null);
       }
     } catch (error) {
       console.error('Erro ao deletar pessoa:', error);
       alert('Erro ao deletar pessoa. Tente novamente.');
-    }
-  };
-
-  const handleAddNote = async (personId: string, noteData: any) => {
-    try {
-      const { data, error } = await supabase
-        .from('person_notes')
-        .insert([{
-          person_id: personId,
-          title: noteData.title,
-          content: noteData.content,
-          tags: noteData.tags
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Erro ao adicionar nota:', error);
-        return false;
-      }
-      
-      // Update person with new note
-      setPeople(prev => prev.map(p => 
-        p.id === personId 
-          ? { 
-              ...p, 
-              notes_count: p.notes_count + 1,
-              notes: p.notes ? [data, ...p.notes] : [data]
-            }
-          : p
-      ));
-      
-      return true;
-    } catch (error) {
-      console.error('Erro ao adicionar nota:', error);
-      return false;
-    }
-  };
-
-  const handleDeleteNote = async (noteId: string, personId: string) => {
-    if (!confirm('Tem certeza que deseja deletar esta nota?')) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('person_notes')
-        .delete()
-        .eq('id', noteId);
-
-      if (error) {
-        console.error('Erro ao deletar nota:', error);
-        return;
-      }
-
-      setPeople(prev => prev.map(p => 
-        p.id === personId 
-          ? { 
-              ...p, 
-              notes_count: Math.max(0, p.notes_count - 1),
-              notes: p.notes?.filter(n => n.id !== noteId) || []
-            }
-          : p
-      ));
-    } catch (error) {
-      console.error('Erro ao deletar nota:', error);
     }
   };
 
@@ -635,6 +209,21 @@ export default function PeopleTab() {
         </motion.div>
       </div>
     );
+  }
+
+  // ✅ PADRÃO CORRETO DO VITE: Navegação por página completa
+  if (selectedPerson) {
+    return <PersonDetail 
+      person={selectedPerson}
+      onBack={() => setSelectedPerson(null)}
+      onUpdate={(updatedPerson: Person) => {
+        setPeople(prev => prev.map(p => 
+          p.id === updatedPerson.id ? updatedPerson : p
+        ));
+        setSelectedPerson(updatedPerson);
+      }}
+      onDeletePerson={handleDeletePerson}
+    />
   }
 
   return (
@@ -668,7 +257,7 @@ export default function PeopleTab() {
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
           >
-            <Card className="bg-slate-800/60 backdrop-blur-sm border border-blue-400/40">
+                          <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-blue-400/40">
               <CardBody className="p-6">
                 <h3 className="text-lg font-bold text-blue-400 mb-4 font-mono">Add New Person</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -692,11 +281,10 @@ export default function PeopleTab() {
                       input: "text-slate-100 font-mono"
                     }}
                   />
-                  <div></div>
                 </div>
                 <Textarea
                   label="TL;DR"
-                  placeholder="Descrição para contexto da IA..."
+                  placeholder="Descrição da pessoa..."
                   value={newPerson.tldr}
                   onChange={(e) => setNewPerson({...newPerson, tldr: e.target.value})}
                   minRows={2}
@@ -730,44 +318,490 @@ export default function PeopleTab() {
 
       {/* People List */}
       <div className="space-y-4">
-        <AnimatePresence>
-          {people.length > 0 ? (
-            people.map((person) => (
-              <PersonCard
-                key={person.id}
-                person={person}
-                isExpanded={expandedCard === person.id}
-                onToggle={() => handleToggleExpand(person.id)}
-                onUpdate={handleUpdatePerson}
-                onDelete={handleDeletePerson}
-                onAddNote={handleAddNote}
-                onDeleteNote={handleDeleteNote}
-              />
-            ))
-          ) : (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-20"
+        {people.length > 0 ? (
+          people.map((person) => (
+            <Card 
+              key={person.id}
+              className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-blue-400/40 transition-all duration-300 hover:shadow-lg hover:shadow-blue-400/10 cursor-pointer"
+              isPressable
+              onPress={() => {
+                setSelectedPerson(person);
+                loadPersonDetail(person.id);
+              }}
             >
-              <Icon icon="lucide:users" width={64} height={64} className="mx-auto mb-6 text-slate-600" />
-              <p className="text-slate-400 font-mono text-lg mb-2">
-                No people yet
-              </p>
-              <p className="text-slate-500 font-mono text-sm">
-                Add your first person to get started
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <CardBody className="p-6">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-xl font-semibold text-slate-100 font-mono">{person.name}</h3>
+                      <span className="text-sm text-blue-400 capitalize font-mono">{person.relation}</span>
+                    </div>
+                    <p className="text-slate-300 font-mono">{person.tldr || 'Sem descrição'}</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-slate-400 flex items-center gap-2 font-mono">
+                      <span>{person.notes_count || 0} notes</span>
+                      <Icon icon="lucide:message-circle" width={16} height={16} />
+                    </div>
+                                         <Button
+                       size="sm"
+                       variant="flat"
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         handleDeletePerson(person.id);
+                       }}
+                       className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                     >
+                       <Icon icon="lucide:trash-2" width={16} height={16} />
+                     </Button>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          ))
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-20"
+          >
+            <Icon icon="lucide:users" width={64} height={64} className="mx-auto mb-6 text-slate-600" />
+            <h3 className="text-xl font-semibold text-slate-400 mb-2 font-mono">Nenhuma pessoa encontrada</h3>
+            <p className="text-slate-500 font-mono">Adicione uma pessoa para começar</p>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ✅ COMPONENTE PERSONDETAIL COMO NO VITE ORIGINAL
+function PersonDetail({ 
+  person, 
+  onBack, 
+  onUpdate,
+  onDeletePerson 
+}: {
+  person: Person;
+  onBack: () => void;
+  onUpdate: (person: Person) => void;
+  onDeletePerson: (id: string) => void;
+}) {
+  const [editingTldr, setEditingTldr] = useState(false);
+  const [editingRelation, setEditingRelation] = useState(false);
+  const [tempTldr, setTempTldr] = useState(person.tldr || '');
+  const [tempRelation, setTempRelation] = useState(person.relation);
+  const [newNote, setNewNote] = useState({ title: '', content: '', tags: '' });
+  
+  // Collapsible states
+  const [showNotesForm, setShowNotesForm] = useState(false);
+  const [showNotesList, setShowNotesList] = useState(false);
+  
+  // Edit states
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [editNoteData, setEditNoteData] = useState({ title: '', content: '', tags: '' });
+
+  const updatePerson = async (updates: any) => {
+    try {
+      const { error } = await supabase
+        .from('people')
+        .update(updates)
+        .eq('id', person.id);
+
+      if (error) {
+        console.error('Erro ao atualizar pessoa:', error);
+        return false;
+      }
+
+      onUpdate({
+        ...person,
+        ...updates,
+        updated_at: new Date().toISOString()
+      });
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar pessoa:', error);
+      return false;
+    }
+  };
+
+  const handleSaveTldr = async () => {
+    if (tempTldr === person.tldr) {
+      setEditingTldr(false);
+      return;
+    }
+
+    const success = await updatePerson({ tldr: tempTldr });
+    if (success) {
+      setEditingTldr(false);
+    }
+  };
+
+  const handleSaveRelation = async () => {
+    if (tempRelation === person.relation) {
+      setEditingRelation(false);
+      return;
+    }
+
+    const success = await updatePerson({ relation: tempRelation });
+    if (success) {
+      setEditingRelation(false);
+    }
+  };
+
+  const createNote = async () => {
+    if (!newNote.title.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('person_notes')
+        .insert([{
+          person_id: person.id,
+          title: newNote.title,
+          content: newNote.content,
+          tags: newNote.tags.split(',').map(t => t.trim()).filter(Boolean)
+        }]);
+
+      if (error) {
+        console.error('Erro ao criar nota:', error);
+        return;
+      }
+
+      setNewNote({ title: '', content: '', tags: '' });
+      setShowNotesForm(false);
+      // Reload person detail
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao criar nota:', error);
+    }
+  };
+
+  // Edit note functions
+  const handleEditNote = (note: PersonNote) => {
+    setEditingNote(note.id);
+    setEditNoteData({
+      title: note.title,
+      content: note.content || '',
+      tags: note.tags.join(', ')
+    });
+  };
+
+  const handleSaveNoteEdit = async () => {
+    if (!editingNote) return;
+    
+    try {
+      const { error } = await supabase
+        .from('person_notes')
+        .update({
+          title: editNoteData.title,
+          content: editNoteData.content,
+          tags: editNoteData.tags.split(',').map(t => t.trim()).filter(Boolean)
+        })
+        .eq('id', editingNote);
+
+      if (error) {
+        console.error('Erro ao atualizar nota:', error);
+        return;
+      }
+
+      setEditingNote(null);
+      // Reload person detail
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao atualizar nota:', error);
+    }
+  };
+
+  const handleCancelNoteEdit = () => {
+    setEditingNote(null);
+    setEditNoteData({ title: '', content: '', tags: '' });
+  };
+
+  const deleteNote = async (noteId: string) => {
+    if (!confirm('Tem certeza que deseja deletar esta nota?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('person_notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (error) {
+        console.error('Erro ao deletar nota:', error);
+        return;
+      }
+
+      // Reload person detail
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao deletar nota:', error);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb 
+        items={[
+          { 
+            label: "People", 
+            icon: "lucide:users",
+            onClick: onBack
+          },
+          { 
+            label: person.name, 
+            icon: "lucide:user",
+            isActive: true
+          }
+        ]} 
+      />
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <motion.h2 
+            className="text-4xl font-bold text-blue-400 font-mono"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            👤 {person.name}
+          </motion.h2>
+        </div>
+        
+        <Button
+          onClick={() => onDeletePerson(person.id)}
+          className="bg-red-900/20 border border-red-500/30 text-red-400 hover:bg-red-900/30 font-mono"
+        >
+          <Icon icon="lucide:trash-2" width={16} height={16} />
+          Delete Person
+        </Button>
       </div>
 
-      {/* Connection Status */}
-      <div className="text-center">
-        <p className="text-xs text-emerald-400 font-mono">
-          ✅ Connected to Supabase - Real data
-        </p>
-      </div>
+      {/* Relation */}
+      <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
+        <CardBody className="p-6">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="font-semibold text-blue-400 font-mono">Relação</h3>
+            <Button
+              size="sm"
+              variant="flat"
+              onClick={() => setEditingRelation(!editingRelation)}
+              className="text-slate-400 hover:text-slate-100"
+            >
+              <Icon icon="lucide:edit" width={16} height={16} />
+            </Button>
+          </div>
+          
+          {editingRelation ? (
+            <div className="flex gap-2">
+              <Input
+                value={tempRelation}
+                onChange={(e) => setTempRelation(e.target.value)}
+                classNames={{
+                  inputWrapper: "bg-slate-700/60 border-slate-600/60",
+                  input: "text-slate-100 font-mono"
+                }}
+              />
+              <Button size="sm" onClick={handleSaveRelation} className="bg-green-600">
+                <Icon icon="lucide:check" width={16} height={16} />
+              </Button>
+              <Button size="sm" variant="bordered" onClick={() => setEditingRelation(false)}>
+                <Icon icon="lucide:x" width={16} height={16} />
+              </Button>
+            </div>
+          ) : (
+            <p className="text-slate-300 capitalize font-mono">{person.relation}</p>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* TL;DR */}
+      <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
+        <CardBody className="p-6">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="font-semibold text-blue-400 font-mono">TL;DR</h3>
+            <Button
+              size="sm"
+              variant="flat"
+              onClick={() => setEditingTldr(!editingTldr)}
+              className="text-slate-400 hover:text-slate-100"
+            >
+              <Icon icon="lucide:edit" width={16} height={16} />
+            </Button>
+          </div>
+          
+          {editingTldr ? (
+            <div className="space-y-2">
+              <Textarea
+                value={tempTldr}
+                onChange={(e) => setTempTldr(e.target.value)}
+                minRows={3}
+                classNames={{
+                  inputWrapper: "bg-slate-700/60 border-slate-600/60",
+                  input: "text-slate-100 font-mono"
+                }}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSaveTldr} className="bg-green-600">
+                  <Icon icon="lucide:check" width={16} height={16} />
+                </Button>
+                <Button size="sm" variant="bordered" onClick={() => setEditingTldr(false)}>
+                  <Icon icon="lucide:x" width={16} height={16} />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-slate-300 font-mono">{person.tldr || 'Sem descrição'}</p>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Notes */}
+      <Card className="bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
+        <CardBody className="p-6">
+          <div className="space-y-6">
+            {/* Add Note Form */}
+            <CollapsibleForm
+              title="Add Person Note"
+              buttonText="Add Note"
+              isOpen={showNotesForm}
+              onToggle={() => setShowNotesForm(!showNotesForm)}
+              buttonColor="bg-blue-600 hover:bg-blue-500"
+              borderColor="border-blue-400/40"
+            >
+              <div className="space-y-4">
+                <Input
+                  placeholder="Note title..."
+                  value={newNote.title}
+                  onChange={(e) => setNewNote({...newNote, title: e.target.value})}
+                  classNames={{
+                    inputWrapper: "bg-slate-700/60 border-slate-600/60",
+                    input: "text-slate-100 font-mono"
+                  }}
+                />
+                <Textarea
+                  placeholder="Note content..."
+                  value={newNote.content}
+                  onChange={(e) => setNewNote({...newNote, content: e.target.value})}
+                  minRows={2}
+                  classNames={{
+                    inputWrapper: "bg-slate-700/60 border-slate-600/60",
+                    input: "text-slate-100 font-mono"
+                  }}
+                />
+                <Input
+                  placeholder="Tags (comma separated)..."
+                  value={newNote.tags}
+                  onChange={(e) => setNewNote({...newNote, tags: e.target.value})}
+                  classNames={{
+                    inputWrapper: "bg-slate-700/60 border-slate-600/60",
+                    input: "text-slate-100 font-mono"
+                  }}
+                />
+                <Button 
+                  onClick={createNote}
+                  isDisabled={!newNote.title.trim()}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-mono"
+                >
+                  <Icon icon="lucide:plus" width={16} height={16} />
+                  Create Note
+                </Button>
+              </div>
+            </CollapsibleForm>
+
+            {/* Notes List */}
+            <CollapsibleSection
+              title="Notes"
+              count={person.notes?.length || 0}
+              isOpen={showNotesList}
+              onToggle={() => setShowNotesList(!showNotesList)}
+            >
+              <div className="space-y-4">
+                {person.notes && person.notes.length > 0 ? (
+                  person.notes.map(note => (
+                    <div key={note.id} className="bg-slate-900/60 p-4 rounded-lg border-l-4 border-blue-500">
+                      {editingNote === note.id ? (
+                        <div className="space-y-3">
+                          <Input
+                            value={editNoteData.title}
+                            onChange={(e) => setEditNoteData({...editNoteData, title: e.target.value})}
+                            className="text-sm"
+                          />
+                          <Textarea
+                            value={editNoteData.content}
+                            onChange={(e) => setEditNoteData({...editNoteData, content: e.target.value})}
+                            minRows={2}
+                            className="text-sm"
+                          />
+                          <Input
+                            value={editNoteData.tags}
+                            onChange={(e) => setEditNoteData({...editNoteData, tags: e.target.value})}
+                            placeholder="Tags (comma separated)..."
+                            className="text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={handleSaveNoteEdit} className="bg-green-600">
+                              <Icon icon="lucide:check" width={12} height={12} />
+                            </Button>
+                            <Button size="sm" variant="bordered" onClick={handleCancelNoteEdit}>
+                              <Icon icon="lucide:x" width={12} height={12} />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-semibold text-slate-100 font-mono">{note.title}</h4>
+                            <div className="flex gap-2">
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="flat"
+                                onClick={() => handleEditNote(note)}
+                                className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                              >
+                                <Icon icon="lucide:edit" width={14} height={14} />
+                              </Button>
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="flat"
+                                onClick={() => deleteNote(note.id)}
+                                className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              >
+                                <Icon icon="lucide:trash-2" width={14} height={14} />
+                              </Button>
+                            </div>
+                          </div>
+                          {note.content && (
+                            <p className="text-slate-300 text-sm mb-3 font-mono">{note.content}</p>
+                          )}
+                          <div className="flex justify-between items-center">
+                            <div className="flex gap-2">
+                              {note.tags?.map(tag => (
+                                <Chip key={tag} size="sm" className="bg-slate-700 text-slate-300 font-mono text-xs">
+                                  #{tag}
+                                </Chip>
+                              ))}
+                            </div>
+                            <span className="text-xs text-slate-500 font-mono">
+                              {new Date(note.created_at).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-slate-500 font-mono text-sm italic text-center py-8">
+                    No notes yet
+                  </div>
+                )}
+              </div>
+            </CollapsibleSection>
+          </div>
+        </CardBody>
+      </Card>
     </div>
   );
 } 

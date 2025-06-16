@@ -6,6 +6,7 @@ import { Button } from "@heroui/button";
 import { Icon } from '@iconify/react';
 import { motion } from "framer-motion";
 import { supabase } from '../../lib/supabase';
+import { useNeuralContext } from './context/NeuralContext';
 
 interface ManifestData {
   user: {
@@ -25,7 +26,8 @@ interface ManifestData {
   last_sync: string;
 }
 
-export default function OverviewTab() {
+export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: string) => void }) {
+  const { stats: contextStats } = useNeuralContext();
   const [manifest, setManifest] = useState<ManifestData | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -38,6 +40,13 @@ export default function OverviewTab() {
   useEffect(() => {
     loadManifest();
   }, []);
+
+  // ✅ Reage às mudanças do contexto
+  useEffect(() => {
+    if (contextStats.last_updated) {
+      loadManifest();
+    }
+  }, [contextStats.last_updated]);
 
   const loadManifest = async () => {
     setLoading(true);
@@ -167,28 +176,28 @@ export default function OverviewTab() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <Card className="bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-emerald-400/40 transition-all">
+        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-emerald-400/40 transition-all">
           <CardBody className="text-center p-6">
             <div className="text-3xl font-bold text-blue-400 font-mono">{stats.people}</div>
             <div className="text-sm text-slate-400 font-mono">People</div>
           </CardBody>
         </Card>
         
-        <Card className="bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-purple-400/40 transition-all">
+        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-purple-400/40 transition-all">
           <CardBody className="text-center p-6">
             <div className="text-3xl font-bold text-purple-400 font-mono">{stats.projects}</div>
             <div className="text-sm text-slate-400 font-mono">Projects</div>
           </CardBody>
         </Card>
         
-        <Card className="bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-green-400/40 transition-all">
+        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-green-400/40 transition-all">
           <CardBody className="text-center p-6">
             <div className="text-3xl font-bold text-green-400 font-mono">{stats.sprints}</div>
             <div className="text-sm text-slate-400 font-mono">Sprints</div>
           </CardBody>
         </Card>
         
-        <Card className="bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-yellow-400/40 transition-all">
+        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-yellow-400/40 transition-all">
           <CardBody className="text-center p-6">
             <div className="text-3xl font-bold text-yellow-400 font-mono">{stats.tasks}</div>
             <div className="text-sm text-slate-400 font-mono">Tasks</div>
@@ -202,7 +211,7 @@ export default function OverviewTab() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <Card className="bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
+        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
           <CardBody className="p-8">
             <h3 className="text-2xl font-bold mb-6 text-emerald-400 font-mono flex items-center gap-3">
               <Icon icon="lucide:brain" width={24} height={24} />
@@ -262,7 +271,7 @@ export default function OverviewTab() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-        <Card className="bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
+        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
           <CardBody className="p-8">
             <h3 className="text-2xl font-bold mb-6 text-emerald-400 font-mono flex items-center gap-3">
               <Icon icon="lucide:settings" width={24} height={24} />

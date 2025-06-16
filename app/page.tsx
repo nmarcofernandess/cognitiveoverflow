@@ -4,29 +4,10 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export default function CognitiveOverflowDashboard() {
-  const [matrixRain, setMatrixRain] = useState('');
   const [glitchActive, setGlitchActive] = useState(false);
-
-  // Matrix rain effect
-  useEffect(() => {
-    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
-    const generateRain = () => {
-      let result = '';
-      for (let i = 0; i < 100; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return result;
-    };
-    
-    const interval = setInterval(() => {
-      setMatrixRain(generateRain());
-    }, 200);
-    
-    return () => clearInterval(interval);
-  }, []);
 
   // Glitch effect trigger
   const triggerGlitch = () => {
@@ -117,22 +98,9 @@ export default function CognitiveOverflowDashboard() {
 
   return (
     <div className="min-h-screen overflow-hidden relative bg-gradient-to-br from-black via-slate-900 to-black">
-      {/* Matrix Background Rain */}
-      <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0 opacity-5">
-        {matrixRain.split('').map((char, i) => (
-          <span 
-            key={i} 
-            className="absolute font-mono text-xs text-cyan-400"
-            style={{
-              left: `${(i % 30) * 3.33}%`,
-              top: `${Math.floor(i / 30) * 10}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animation: `matrixfall 4s linear infinite`
-            }}
-          >
-            {char}
-          </span>
-        ))}
+      {/* Background Gradient */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0 opacity-10">
+        <div className="w-full h-full bg-gradient-to-br from-cyan-500/5 via-purple-500/5 to-pink-500/5"></div>
       </div>
 
       {/* Main Content */}
@@ -144,19 +112,9 @@ export default function CognitiveOverflowDashboard() {
         >
           <div className="mb-8">
             <h1 
-              className={`text-7xl md:text-9xl font-bold mb-6 ${
+              className={`text-7xl md:text-9xl font-bold mb-6 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 bg-clip-text text-transparent ${
                 glitchActive ? 'animate-pulse' : ''
               }`}
-              style={{
-                background: 'linear-gradient(45deg, #00bfff, #8a2be2, #ff1493, #00bfff)',
-                backgroundSize: '200% 200%',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                animation: 'gradientShift 4s ease infinite',
-                textShadow: glitchActive ? '0 0 50px rgba(138, 43, 226, 0.8)' : 'none',
-                filter: glitchActive ? 'brightness(2) saturate(2)' : 'brightness(1)'
-              }}
             >
               COGNITIVE
               <br />
@@ -191,31 +149,29 @@ export default function CognitiveOverflowDashboard() {
           </h2>
           
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {projects.map((project, index) => (
+            {projects.map((project, index) => {
+              // Function to get the radial gradient based on project color
+              const getRadialGradient = (color: string) => {
+                if (color.includes('purple')) return 'radial-gradient(circle at top right, rgba(138, 43, 226, 0.1), transparent 60%)';
+                if (color.includes('green')) return 'radial-gradient(circle at top right, rgba(34, 197, 94, 0.1), transparent 60%)';
+                if (color.includes('amber')) return 'radial-gradient(circle at top right, rgba(251, 191, 36, 0.1), transparent 60%)';
+                if (color.includes('blue')) return 'radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 60%)';
+                if (color.includes('indigo')) return 'radial-gradient(circle at top right, rgba(99, 102, 241, 0.1), transparent 60%)';
+                return 'radial-gradient(circle at top right, rgba(100, 116, 139, 0.1), transparent 60%)';
+              };
+
+              const cardStyle = {
+                background: [
+                  'linear-gradient(135deg, rgba(30, 30, 35, 0.9), rgba(40, 40, 45, 0.9), rgba(25, 25, 30, 0.9))',
+                  getRadialGradient(project.color)
+                ].join(', ')
+              };
+
+              return (
               <Card 
                 key={project.id}
-                className={`project-card relative overflow-hidden cursor-pointer transition-all duration-500 hover:scale-105 bg-gradient-to-br ${project.color} ${project.borderColor} border backdrop-blur-lg hover:${project.glowColor} hover:shadow-2xl group`}
-                style={{
-                  background: `
-                    linear-gradient(135deg, 
-                      rgba(30, 30, 35, 0.9), 
-                      rgba(40, 40, 45, 0.9),
-                      rgba(25, 25, 30, 0.9)
-                    ),
-                    ${project.color.includes('purple') ? 
-                      'radial-gradient(circle at top right, rgba(138, 43, 226, 0.1), transparent 60%)' :
-                      project.color.includes('green') ?
-                      'radial-gradient(circle at top right, rgba(34, 197, 94, 0.1), transparent 60%)' :
-                      project.color.includes('amber') ?
-                      'radial-gradient(circle at top right, rgba(251, 191, 36, 0.1), transparent 60%)' :
-                      project.color.includes('blue') ?
-                      'radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 60%)' :
-                      project.color.includes('indigo') ?
-                      'radial-gradient(circle at top right, rgba(99, 102, 241, 0.1), transparent 60%)' :
-                      'radial-gradient(circle at top right, rgba(100, 116, 139, 0.1), transparent 60%)'
-                    }
-                  `
-                }}
+                className={`project-card relative overflow-hidden cursor-pointer transition-all duration-500 hover:scale-105 bg-gradient-to-br ${project.color} ${project.borderColor} border backdrop-blur-lg hover:shadow-2xl group`}
+                style={cardStyle}
               >
                 <CardHeader className="pb-4">
                   <div className="flex justify-between items-start w-full">
@@ -325,7 +281,8 @@ export default function CognitiveOverflowDashboard() {
                   } rounded-full animate-ping`}></div>
                 </div>
               </Card>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -340,27 +297,7 @@ export default function CognitiveOverflowDashboard() {
         </footer>
       </div>
 
-      <style jsx>{`
-        @keyframes gradientShift {
-          0%, 100% { 
-            background-position: 0% 50%;
-          }
-          50% { 
-            background-position: 100% 50%;
-          }
-        }
 
-        @keyframes matrixfall {
-          0% { 
-            opacity: 1; 
-            transform: translateY(-50px);
-          }
-          100% { 
-            opacity: 0; 
-            transform: translateY(100vh);
-          }
-        }
-      `}</style>
     </div>
   );
 }

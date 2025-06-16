@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 
 // Neural System Components  
 import { OverviewTab, PeopleTab, ProjectsTab } from '../../components/neural';
+import { NeuralProvider } from '../../components/neural/context/NeuralContext';
 
 export default function NeuralSystemPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -18,6 +19,17 @@ export default function NeuralSystemPage() {
     sessionStorage.removeItem('recursos_auth');
     sessionStorage.removeItem('recursos_auth_timestamp');
     window.location.href = '/recursos';
+  };
+
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    
+    // Dispatch custom events to reset navigation in tabs
+    if (newTab === 'people') {
+      window.dispatchEvent(new CustomEvent('tab-changed-to-people'));
+    } else if (newTab === 'projects') {
+      window.dispatchEvent(new CustomEvent('tab-changed-to-projects'));
+    }
   };
 
   const tabs = [
@@ -89,7 +101,7 @@ export default function NeuralSystemPage() {
             {tabs.map((tab) => (
               <motion.button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`flex items-center gap-3 px-6 py-3 rounded-lg font-mono font-medium transition-all duration-300 ${
                   activeTab === tab.id
                     ? 'bg-slate-800/60 border border-emerald-400/40 text-emerald-400 shadow-emerald-400/10 shadow-lg'
@@ -115,45 +127,47 @@ export default function NeuralSystemPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="relative z-10 max-w-7xl mx-auto p-6">
-        <AnimatePresence mode="wait">
-          {activeTab === 'overview' && (
-            <motion.div
-              key="overview"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <OverviewTab />
-            </motion.div>
-          )}
-          
-          {activeTab === 'people' && (
-            <motion.div
-              key="people"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <PeopleTab />
-            </motion.div>
-          )}
-          
-          {activeTab === 'projects' && (
-            <motion.div
-              key="projects"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <ProjectsTab />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      <NeuralProvider>
+        <div className="relative z-10 max-w-7xl mx-auto p-6">
+          <AnimatePresence mode="wait">
+            {activeTab === 'overview' && (
+              <motion.div
+                key="overview"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <OverviewTab onTabChange={handleTabChange} />
+              </motion.div>
+            )}
+            
+            {activeTab === 'people' && (
+              <motion.div
+                key="people"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <PeopleTab onTabChange={handleTabChange} />
+              </motion.div>
+            )}
+            
+            {activeTab === 'projects' && (
+              <motion.div
+                key="projects"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ProjectsTab onTabChange={handleTabChange} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </NeuralProvider>
 
       {/* Footer Status */}
       <div className="relative z-10 border-t border-slate-800/50 bg-slate-950/50 backdrop-blur-sm">

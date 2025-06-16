@@ -1,109 +1,95 @@
 import React, { useEffect, useRef } from "react";
 
 export const MatrixRain: React.FC = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size
+    const resizeCanvas = () => {
+      if (!canvas) return;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
     
-    const characters = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンあかさたなはまやらわがざだばぱいきしちにひみりゐぎじぢびぴうくすつぬふむゆるゔぐずづぶぷえけせてねへめれゑげぜでべぺおこそとのほも';
-    const container = containerRef.current;
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Matrix characters - mixing English, Japanese, and symbols
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+    const charArray = chars.split('');
+    const fontSize = 14;
+    const columns = Math.floor(canvas.width / fontSize);
+
+    const drops: number[] = [];
+    const speeds: number[] = [];
+    const brightChars: number[] = [];
     
-    // Function to create a column
-    const createColumn = () => {
-      const containerWidth = window.innerWidth;
-      // Further increased spacing for more sophistication
-      const columnWidth = 35;
-      // Reduce columns even more but ensure good coverage
-      const columns = Math.floor(containerWidth / columnWidth) * 0.6;
+    // Initialize drops with random positions and speeds
+    for (let i = 0; i < columns; i++) {
+      drops[i] = Math.random() * -100; // Start at random heights above screen
+      speeds[i] = Math.random() * 0.5 + 0.5; // Variable falling speeds
+      brightChars[i] = Math.random() * 10; // Random bright character position
+    }
+
+    function draw() {
+      if (!ctx || !canvas) return;
       
-      // Clear container
-      container.innerHTML = '';
-      
-      // Create columns with varying characteristics
-      for (let i = 0; i < columns; i++) {
-        const column = document.createElement('div');
-        column.className = 'matrix-rain-column';
+      // Fade effect - creates the trailing effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.font = `${fontSize}px monospace`;
+
+      for (let i = 0; i < drops.length; i++) {
+        // Generate random character
+        const text = charArray[Math.floor(Math.random() * charArray.length)];
         
-        // More random positioning
-        column.style.left = `${i * columnWidth + (Math.random() * 20 - 10)}px`; 
-        
-        // Much more variance in animation timing
-        column.style.animationDelay = `${Math.random() * 8}s`; 
-        column.style.animationDuration = `${10 + Math.random() * 15}s`; 
-        
-        // Greater variance in opacity for more depth
-        column.style.opacity = `${0.2 + Math.random() * 0.4}`;
-        
-        // Vary font size slightly for added dimension
-        const fontSize = 1.0 + (Math.random() * 0.4);
-        column.style.fontSize = `${fontSize}rem`;
-        
-        // Characters with varying brightness - some stand out more
-        let columnText = '';
-        const charBrightness = Math.random() > 0.8; // 20% chance for a brighter column
-        
-        if (charBrightness) {
-          column.classList.add('bright-column');
+        // Variable brightness - some characters are brighter (white/light green)
+        if (Math.abs(drops[i] - brightChars[i]) < 2) {
+          // Bright leading character
+          ctx.fillStyle = '#ffffff';
+        } else if (Math.abs(drops[i] - brightChars[i]) < 5) {
+          // Medium brightness
+          ctx.fillStyle = '#00ff00';
+        } else {
+          // Standard green
+          ctx.fillStyle = '#008000';
         }
         
-        // Different length columns
-        const columnLength = 30 + Math.floor(Math.random() * 20);
-        
-        for (let j = 0; j < columnLength; j++) {
-          // First character is brighter for some columns
-          if (j === 0 && Math.random() > 0.7) {
-            columnText += `<span class="bright-char">${characters[Math.floor(Math.random() * characters.length)]}</span>\n`;
-          } else {
-            columnText += characters[Math.floor(Math.random() * characters.length)] + '\n';
-          }
+        // Draw the character
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+        // Reset drop when it goes off screen or randomly
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+          speeds[i] = Math.random() * 0.5 + 0.5; // New random speed
+          brightChars[i] = Math.random() * 10; // New bright position
         }
         
-        column.innerHTML = columnText;
-        container.appendChild(column);
+        // Move drop down with variable speed
+        drops[i] += speeds[i];
       }
-    };
-    
-    // Initial creation
-    createColumn();
-    
-    // Update characters periodically with different patterns
-    const updateInterval = setInterval(() => {
-      const columns = container.querySelectorAll('.matrix-rain-column');
-      columns.forEach((column, index) => {
-        // Different update patterns for different columns
-        // Some update more frequently than others
-        const updateChance = index % 3 === 0 ? 0.97 : 0.99;
-        
-        if (Math.random() > updateChance) {
-          const columnLength = 30 + Math.floor(Math.random() * 20);
-          let newText = '';
-          
-          for (let j = 0; j < columnLength; j++) {
-            if (j === 0 && Math.random() > 0.7) {
-              newText += `<span class="bright-char">${characters[Math.floor(Math.random() * characters.length)]}</span>\n`;
-            } else {
-              newText += characters[Math.floor(Math.random() * characters.length)] + '\n';
-            }
-          }
-          
-          column.innerHTML = newText;
-        }
-      });
-    }, 800); // Even slower updates for subtlety
-    
-    // Handle window resize
-    const handleResize = () => {
-      createColumn();
-    };
-    
-    window.addEventListener('resize', handleResize);
-    
+    }
+
+    const interval = setInterval(draw, 35);
+
     return () => {
-      clearInterval(updateInterval);
-      window.removeEventListener('resize', handleResize);
+      clearInterval(interval);
+      window.removeEventListener('resize', resizeCanvas);
     };
   }, []);
-  
-  return <div ref={containerRef} className="matrix-rain"></div>;
+
+  return (
+    <canvas 
+      ref={canvasRef}
+      className="absolute inset-0 z-0"
+      style={{ opacity: 0.4 }}
+    />
+  );
 };
