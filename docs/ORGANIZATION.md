@@ -175,26 +175,18 @@ export const projects: ProjectMetadata[] = [
 
 ## 🚀 Adicionando Novos Projetos
 
-1. **Criar estrutura**:
-   ```bash
-   mkdir app/novo-projeto
-   mkdir components/novo-projeto
-   touch styles/projects/novo-projeto.css
-   ```
+**📖 Para instruções completas, veja:**
+- `README.md` - Quick start e fluxo básico
+- `docs/AUTO_MATRIX_GUIDE.md` - Sistema Matrix Auth detalhado
 
-2. **Implementar página principal**:
-   - Usar template padrão
-   - Adicionar navegação obrigatória
-   - Importar estilos específicos
+**🎯 Resumo do fluxo:**
+1. **Config**: Adicionar em `config/projects.ts` 
+2. **Structure**: Criar `app/projeto/page.tsx` (+ `layout.tsx` se protegido)
+3. **Auto-Deploy**: Aparece automaticamente no dashboard
 
-3. **Atualizar dashboard**:
-   - Adicionar no array `projects`
-   - Definir cores e metadata
-
-4. **Testar isolamento**:
-   - Verificar se não afeta outros projetos
-   - Testar navegação
-   - Validar responsividade
+**🔄 Migration dos layouts antigos:**
+- Substituir layouts manuais por `AutoMatrixLayout` se protegido
+- Remover auth custom em favor do sistema unificado
 
 ## ⚠️ Cuidados Importantes
 

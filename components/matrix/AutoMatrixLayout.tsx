@@ -1,18 +1,32 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import UnifiedMatrixAuth from '../../components/matrix/UnifiedMatrixAuth';
+import { usePathname } from 'next/navigation';
+import UnifiedMatrixAuth from './UnifiedMatrixAuth';
+import { getProjectById } from '../../config/projects';
 
-export default function RecursosLayout({
-  children,
-}: {
+interface AutoMatrixLayoutProps {
   children: React.ReactNode;
-}) {
+}
+
+export default function AutoMatrixLayout({ children }: AutoMatrixLayoutProps) {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
+
+  // Extrair ID do projeto da rota (ex: "/matrix" -> "matrix")
+  const projectId = pathname.slice(1);
+  const project = getProjectById(projectId);
 
   useEffect(() => {
-    // Verificar se já está autenticado com o sistema unificado
+    // Se o projeto não existe ou não é protegido, libera acesso
+    if (!project || !project.protected) {
+      setAuthenticated(true);
+      setLoading(false);
+      return;
+    }
+
+    // Verificar auth para projetos protegidos
     const auth = sessionStorage.getItem('matrix_global_auth');
     const timestamp = sessionStorage.getItem('matrix_global_auth_timestamp');
     
@@ -32,7 +46,7 @@ export default function RecursosLayout({
     }
     
     setLoading(false);
-  }, []);
+  }, [project, pathname]);
 
   if (loading) {
     return (
@@ -44,13 +58,14 @@ export default function RecursosLayout({
     );
   }
 
-  if (!authenticated) {
+  // Se não está autenticado E o projeto é protegido
+  if (!authenticated && project?.protected) {
     return (
       <UnifiedMatrixAuth 
         onAuth={setAuthenticated}
-        targetRoute="/recursos"
-        title="NEURAL SYSTEM ACCESS"
-        subtitle="Enter the Matrix to access your Neural Database"
+        targetRoute={project.path}
+        title={project.authConfig?.title || `${project.title} ACCESS`}
+        subtitle={project.authConfig?.subtitle || `Enter the Matrix to access ${project.title}`}
       />
     );
   }

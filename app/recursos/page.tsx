@@ -6,6 +6,7 @@ import { Card, CardBody } from "@heroui/card";
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from '../../lib/supabase';
+import MatrixLogoutButton from '../../components/matrix/MatrixLogoutButton';
 
 // Neural System Components  
 import { OverviewTab, PeopleTab, ProjectsTab } from '../../components/neural';
@@ -15,11 +16,7 @@ export default function NeuralSystemPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('recursos_auth');
-    sessionStorage.removeItem('recursos_auth_timestamp');
-    window.location.href = '/recursos';
-  };
+
 
   const handleTabChange = (newTab: string) => {
     setActiveTab(newTab);
@@ -83,14 +80,7 @@ export default function NeuralSystemPage() {
             🧠 MARCO NEURAL SYSTEM v2.0
           </motion.div>
 
-          <Button
-            onClick={handleLogout}
-            size="lg"
-            className="bg-red-900/20 backdrop-blur border border-red-500/30 text-red-400 hover:bg-red-900/30 hover:border-red-400/50 font-mono font-medium transition-all"
-          >
-            <Icon icon="lucide:log-out" width={18} height={18} />
-            LOGOUT
-          </Button>
+          <MatrixLogoutButton redirectTo="/recursos" />
         </div>
       </div>
 

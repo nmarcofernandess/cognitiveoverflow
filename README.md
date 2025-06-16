@@ -4,6 +4,24 @@
 
 Um projeto Next.js modular que abriga múltiplos experimentos criativos, análises de personalidade e simulações interativas.
 
+## 🔐 Sistema Matrix Auth
+
+O Cognitive Overflow possui um sistema de autenticação Matrix unificado que protege projetos sensíveis:
+
+- **🔵 Blue Pill (Public)**: Acesso livre e imediato
+- **🔴 Red Pill (Protected)**: Requer Matrix Auth com senha `redpill`
+- **🎯 One Login, All Access**: Uma autenticação libera todos os projetos protegidos por 7 dias
+- **🎨 Custom Auth Screens**: Títulos e mensagens personalizadas por projeto
+
+### Dashboard Organizado
+```
+🌍 PUBLIC PROJECTS          🔐 MATRIX PROTECTED
+- Marco's Personality Trip    - The Matrix 
+- TokenFlow                   - Recursos Vault
+- Comic Builder               - Future Protected Projects...
+- Apatia Landing
+```
+
 ## 🚀 Projetos Ativos
 
 ### 🧠 Marco's Personality Trip (`/marco`)
@@ -115,59 +133,12 @@ cognitiveoverflow/
 
 ## 🔧 Como Adicionar Novos Projetos
 
-### 1. Estrutura de Arquivos
-```bash
-# Criar rota do projeto
-mkdir app/nome-projeto
-touch app/nome-projeto/page.tsx
+### 🎯 **Sistema Matrix Auth Unificado**
 
-# Criar componentes específicos
-mkdir components/nome-projeto
-touch components/nome-projeto/ComponentePrincipal.tsx
+O Cognitive Overflow agora usa um sistema automatizado onde cada projeto pode ser **público** (🔵 blue pill) ou **protegido** (🔴 red pill) com Matrix Auth.
 
-# Criar estilos específicos (opcional)
-touch styles/nome-projeto.css
-```
-
-### 2. Padrão de Componente
-```tsx
-"use client";
-
-import React from 'react';
-import { Button } from "@heroui/button";
-import { Icon } from '@iconify/react';
-import Link from "next/link";
-
-// Importar estilos específicos se necessário
-import '../../styles/nome-projeto.css';
-
-export default function NomeProjeto() {
-  return (
-    <>
-      {/* Botão de navegação obrigatório */}
-      <div className="fixed top-6 left-6 z-50">
-        <Link href="/">
-          <Button
-            size="lg"
-            className="font-mono font-bold backdrop-blur-lg bg-gray-500/20 border border-gray-500/50 text-gray-300 hover:bg-gray-500/30"
-          >
-            <Icon icon="lucide:arrow-left" width={20} height={20} />
-            COGNITIVE OVERFLOW
-          </Button>
-        </Link>
-      </div>
-
-      {/* Conteúdo do projeto */}
-      <div className="min-h-screen p-6">
-        {/* Seu projeto aqui */}
-      </div>
-    </>
-  );
-}
-```
-
-### 3. Atualizar Dashboard
-Adicione o novo projeto no array `projects` em `app/page.tsx`:
+### 1. **Configurar Projeto** 
+Adicione no `config/projects.ts`:
 
 ```tsx
 {
@@ -176,14 +147,84 @@ Adicione o novo projeto no array `projects` em `app/page.tsx`:
   subtitle: "Descrição curta",
   description: "Descrição completa do projeto...",
   path: "/nome-projeto",
-  color: "from-blue-500/20 to-cyan-500/20",
-  borderColor: "border-blue-500/40",
-  glowColor: "shadow-blue-500/30",
-  emoji: "🎯",
   status: "ACTIVE",
-  tags: ["Tag1", "Tag2", "Tag3"]
+  protected: false, // 🔵 true = Matrix Auth | false = Público
+  tags: ["Tag1", "Tag2", "Tag3"],
+  colors: {
+    primary: "from-blue-500/20 to-cyan-500/20",
+    secondary: "blue-500",
+    accent: "cyan-500", 
+    borderColor: "border-blue-500/40",
+    glowColor: "shadow-blue-500/30"
+  },
+  emoji: "🎯",
+  // Opcional para projetos protegidos:
+  authConfig: {
+    title: "CUSTOM AUTH TITLE",
+    subtitle: "Custom auth message"
+  }
 }
 ```
+
+### 2. **Criar Estrutura**
+```bash
+mkdir app/nome-projeto
+touch app/nome-projeto/page.tsx
+touch app/nome-projeto/layout.tsx  # Se protegido
+```
+
+### 3. **Layout (se protegido)**
+```tsx
+// app/nome-projeto/layout.tsx
+"use client";
+import AutoMatrixLayout from '../../components/matrix/AutoMatrixLayout';
+
+export default function ProjetoLayout({ children }: { children: React.ReactNode }) {
+  return <AutoMatrixLayout>{children}</AutoMatrixLayout>;
+}
+```
+
+### 4. **Página do Projeto**
+```tsx
+// app/nome-projeto/page.tsx
+"use client";
+import React from 'react';
+import { Button } from "@heroui/button";
+import { Icon } from '@iconify/react';
+import Link from "next/link";
+import MatrixLogoutButton from '../../components/matrix/MatrixLogoutButton'; // Se protegido
+
+export default function NomeProjeto() {
+  return (
+    <>
+      {/* Navigation */}
+      <div className="fixed top-6 left-6 z-50">
+        <Link href="/">
+          <Button size="lg" className="font-mono font-bold backdrop-blur-lg bg-gray-500/20 border border-gray-500/50 text-gray-300 hover:bg-gray-500/30">
+            <Icon icon="lucide:arrow-left" width={20} height={20} />
+            COGNITIVE OVERFLOW
+          </Button>
+        </Link>
+      </div>
+
+      {/* Logout (apenas se protegido) */}
+      <div className="fixed top-6 right-6 z-50">
+        <MatrixLogoutButton redirectTo="/nome-projeto" />
+      </div>
+
+      {/* Conteúdo */}
+      <div className="min-h-screen p-6">
+        {/* Seu projeto aqui */}
+      </div>
+    </>
+  );
+}
+```
+
+### 🔐 **Matrix Auth System**
+- **Password:** `redpill` (libera todos os protegidos)
+- **Duration:** 7 dias
+- **Guide:** Ver `docs/AUTO_MATRIX_GUIDE.md` para detalhes completos
 
 ## 🚀 Comandos de Desenvolvimento
 
@@ -232,6 +273,14 @@ O projeto está configurado para deploy automático na Vercel:
 ## 🤝 Contribuição
 
 Este é um projeto experimental pessoal, mas sugestões são bem-vindas!
+
+## 📚 Documentação
+
+- **README.md** - Overview, quick start e comandos básicos
+- **docs/ORGANIZATION.md** - Estrutura técnica, padrões e convenções
+- **docs/AUTO_MATRIX_GUIDE.md** - Sistema Matrix Auth detalhado
+- **docs/comic-builder-guide.md** - Guia específico do Comic Builder
+- **docs/tokenflow-guide.md** - Guia específico do TokenFlow
 
 ## 📜 Licença
 

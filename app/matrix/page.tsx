@@ -47,6 +47,22 @@ const MatrixProject: React.FC = () => {
         </Link>
       </div>
 
+      {/* Botão para Matrix Logout */}
+      <div className="fixed top-6 right-6 z-[100]">
+        <Button
+          onClick={() => {
+            sessionStorage.removeItem('matrix_global_auth');
+            sessionStorage.removeItem('matrix_global_auth_timestamp');
+            window.location.href = '/matrix';
+          }}
+          size="lg"
+          className="bg-red-500/20 border border-red-400/50 text-red-400 hover:bg-red-500/30 hover:border-red-400 font-mono backdrop-blur-lg shadow-lg"
+        >
+          <Icon icon="lucide:log-out" width={20} height={20} />
+          EXIT MATRIX
+        </Button>
+      </div>
+
       <div className="matrix-container">
         <MatrixRain />
         <div className="matrix-overlay"></div>

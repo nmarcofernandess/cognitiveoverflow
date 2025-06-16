@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import UnifiedMatrixAuth from '../../components/matrix/UnifiedMatrixAuth';
 
-export default function RecursosLayout({
+export default function MatrixLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -48,9 +48,9 @@ export default function RecursosLayout({
     return (
       <UnifiedMatrixAuth 
         onAuth={setAuthenticated}
-        targetRoute="/recursos"
-        title="NEURAL SYSTEM ACCESS"
-        subtitle="Enter the Matrix to access your Neural Database"
+        targetRoute="/matrix"
+        title="REALITY ENGINE ACCESS"
+        subtitle="Enter the Matrix to see how deep the rabbit hole goes"
       />
     );
   }
