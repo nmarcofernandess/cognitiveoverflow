@@ -8,9 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from '../../lib/supabase';
 
 // Neural System Components  
-import OverviewTab from '../../components/neural/OverviewTab';
-import PeopleTab from '../../components/neural/PeopleTab';
-import ProjectsTab from '../../components/neural/ProjectsTab';
+import { OverviewTab, PeopleTab, ProjectsTab } from '../../components/neural';
 
 export default function NeuralSystemPage() {
   const [activeTab, setActiveTab] = useState('overview');
