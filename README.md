@@ -18,12 +18,30 @@ Simulação cyberpunk inspirada na Matrix com:
 - Análise de relacionamentos sem filtros
 - Interface terminal estilo hacker
 
+### 🧠 TokenFlow (`/tokenflow`)
+Motor de análise avançada para conversas de IA com:
+- Importação de conversas ChatGPT e Claude
+- Sistema de filtros e busca inteligente
+- Exportação em múltiplos formatos
+- Interface moderna com gerenciamento de favoritos
+
+### 📚 Comic Builder (`/comic-builder`)
+Ferramenta para criação de histórias em quadrinhos com:
+- Sistema de personagens com fases evolutivas
+- Organização de cenas em painéis estruturados
+- Geração de prompts para IA visual
+- Interface drag-and-drop para organização
+
 ## 🛠 Tecnologias
 
 - **Framework**: Next.js 15.3.1 (App Router)
 - **UI**: HeroUI + Tailwind CSS
+- **State Management**: Zustand (TokenFlow)
+- **Drag & Drop**: DnD Kit (Comic Builder)
 - **Animações**: Framer Motion
-- **Ícones**: Iconify React
+- **Ícones**: Iconify React + Tabler Icons + Lucide React
+- **File Processing**: JSZip, React Dropzone
+- **Virtualization**: TanStack Virtual
 - **Tipagem**: TypeScript
 - **Deploy**: Vercel (preparado)
 
@@ -39,12 +57,29 @@ cognitiveoverflow/
 ├── components/                   # Componentes organizados por projeto
 │   ├── analysis/                # Componentes do projeto Marco
 │   │   └── PersonalityTrip.tsx
-│   └── matrix/                  # Componentes do projeto Matrix
-│       ├── MatrixRain.tsx
-│       ├── Terminal.tsx
-│       ├── BluePill.tsx
-│       ├── LandingPage.tsx
-│       └── [...outros]
+│   ├── matrix/                  # Componentes do projeto Matrix
+│   │   ├── MatrixRain.tsx
+│   │   ├── Terminal.tsx
+│   │   ├── BluePill.tsx
+│   │   ├── LandingPage.tsx
+│   │   └── [...outros]
+│   ├── tokenflow/               # Componentes do projeto TokenFlow
+│   │   ├── Chat/                # Sistema de chat e conversas
+│   │   ├── Export/              # Funcionalidades de exportação
+│   │   ├── FileManagement/      # Gerenciamento de arquivos
+│   │   ├── FilterControls/      # Controles de filtro
+│   │   ├── Layout/              # Componentes de layout
+│   │   ├── Loading/             # Estados de carregamento
+│   │   ├── store/               # Gerenciamento de estado (Zustand)
+│   │   ├── types/               # Definições TypeScript
+│   │   └── utils/               # Utilitários e helpers
+│   └── comic-builder/           # Componentes do projeto Comic Builder
+│       ├── hooks/               # Hooks personalizados
+│       ├── character-*.tsx      # Componentes de personagens
+│       ├── scene-*.tsx          # Componentes de cenas
+│       ├── dashboard.tsx        # Dashboard principal
+│       ├── header.tsx           # Navegação e ações
+│       └── ComicBuilderMain.tsx # Componente principal
 ├── styles/                       # Estilos separados por projeto
 │   ├── globals.css              # Estilos globais
 │   └── matrix.css               # Estilos específicos do Matrix
@@ -65,6 +100,18 @@ cognitiveoverflow/
 - **Tipografia**: `VT323`, `JetBrains Mono` (monospace)
 - **Animações**: Rain effect, terminal typing, glow effects
 - **Estética**: Cyberpunk/hacker terminal
+
+### TokenFlow
+- **Paleta**: Azul/cyan (#00bfff), cinza moderno
+- **Tipografia**: Sans-serif limpa para interface
+- **Animações**: Smooth transitions, hover effects
+- **Estética**: Dashboard profissional com cards e filtros
+
+### Comic Builder
+- **Paleta**: Índigo/violeta (#6366f1), roxo moderno
+- **Tipografia**: Sans-serif limpa, elementos drag-and-drop
+- **Animações**: Drag transitions, card organizing effects
+- **Estética**: Interface de criação visual com drag-and-drop
 
 ## 🔧 Como Adicionar Novos Projetos
 

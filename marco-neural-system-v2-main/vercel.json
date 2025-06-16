@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "source": "api"
+  },
+  "build": {
+    "command": "npm run build",
+    "publish": "dist"
+  }
+}
+

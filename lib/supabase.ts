@@ -1,37 +1,67 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDM3NTU2MzgsImV4cCI6MTk1OTMzMTYzOH0.placeholder'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables')
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Função para verificar se Supabase está configurado
-export const isSupabaseConfigured = () => {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL && 
-         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-         !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
-}
-
-// Types para os recursos
-export interface Resource {
+// Database types for Neural System
+export interface Person {
   id: string
-  title: string
-  content: string
-  category: 'recursos' | 'insights' | 'docs'
-  tags: string[]
-  priority: 'alta' | 'média' | 'baixa'
+  name: string
+  relation: string
+  tldr?: string
   created_at: string
   updated_at?: string
 }
 
-export interface Database {
-  public: {
-    Tables: {
-      recursos: {
-        Row: Resource
-        Insert: Omit<Resource, 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Omit<Resource, 'id' | 'created_at'>>
-      }
-    }
-  }
+export interface PersonNote {
+  id: string
+  person_id: string
+  title: string
+  content?: string
+  tags: string[]
+  created_at: string
+}
+
+export interface Project {
+  id: string
+  name: string
+  tldr?: string
+  created_at: string
+  updated_at?: string
+}
+
+export interface Sprint {
+  id: string
+  project_id: string
+  name: string
+  tldr?: string
+  status: 'active' | 'completed' | 'archived'
+  created_at: string
+  updated_at?: string
+}
+
+export interface Task {
+  id: string
+  sprint_id: string
+  title: string
+  description?: string
+  status: 'pending' | 'in_progress' | 'completed'
+  priority: number
+  created_at: string
+  completed_at?: string
+}
+
+export interface SprintNote {
+  id: string
+  sprint_id: string
+  title: string
+  content?: string
+  tags: string[]
+  created_at: string
 } 

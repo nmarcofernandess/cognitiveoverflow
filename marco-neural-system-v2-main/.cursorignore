@@ -1,0 +1,3 @@
+# Allow viewing .env files for debugging
+!.env
+!.env.* 

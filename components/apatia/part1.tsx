@@ -53,7 +53,7 @@ export default function ApatiaPart1() {
         <Link href="/">
           <Button
             size="lg"
-            className="bg-slate-800/50 backdrop-blur border border-slate-700/50 text-slate-300 hover:text-gray-300 hover:border-gray-400/30 font-mono font-medium transition-all"
+            className="bg-gray-900/80 dark:bg-slate-800/50 backdrop-blur border border-gray-700 dark:border-slate-700/50 text-gray-100 dark:text-slate-300 hover:text-gray-300 hover:border-gray-400/30 font-mono font-medium transition-all shadow-lg"
           >
             <Icon icon="lucide:arrow-left" width={18} height={18} />
             COGNITIVE OVERFLOW

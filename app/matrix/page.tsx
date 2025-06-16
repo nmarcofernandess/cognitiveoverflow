@@ -39,7 +39,7 @@ const MatrixProject: React.FC = () => {
         <Link href="/">
           <Button
             size="lg"
-            className="bg-green-500/20 border border-green-500/50 text-green-400 hover:bg-green-500/30 hover:border-green-400 font-mono backdrop-blur-lg"
+            className="bg-green-500/20 dark:bg-green-500/20 border border-green-400 dark:border-green-500/50 text-gray-100 dark:text-green-400 hover:bg-green-500/30 hover:border-green-400 font-mono backdrop-blur-lg shadow-lg"
           >
             <Icon icon="lucide:arrow-left" width={20} height={20} />
             COGNITIVE OVERFLOW

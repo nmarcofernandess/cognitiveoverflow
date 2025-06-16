@@ -1,0 +1,28 @@
+# Cursor AI should be able to see these files for debugging
+# Remove common files from ignore so AI can help debug
+
+# Keep these hidden (sensitive)
+.env.production
+.env.production.local
+**/*secret*
+**/*password*
+**/*key*.pem
+
+# Show these to AI for debugging
+!.env.local
+!.env.example
+!*.config.js
+!*.config.ts
+
+# Standard ignores
+node_modules/
+.next/
+dist/
+build/
+coverage/
+.nyc_output/
+**/*.log
+
+# OS files
+.DS_Store
+Thumbs.db 

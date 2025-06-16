@@ -86,6 +86,32 @@ export default function CognitiveOverflowDashboard() {
       emoji: "😶",
       status: "ACTIVE",
       tags: ["Landing", "Psychology", "Anti-Motivation"]
+    },
+    {
+      id: 'tokenflow',
+      title: "TOKENFLOW",
+      subtitle: "Chat Analysis Engine",
+      description: "Motor de análise avançada para conversas de IA. Importa, filtra, analisa e exporta suas conversas do ChatGPT e Claude com inteligência.",
+      path: "/tokenflow",
+      color: "from-blue-500/20 to-cyan-500/20",
+      borderColor: "border-blue-500/40",
+      glowColor: "shadow-blue-500/30",
+      emoji: "🧠",
+      status: "ACTIVE",
+      tags: ["AI", "Analysis", "Chat"]
+    },
+    {
+      id: 'comic-builder',
+      title: "COMIC BUILDER",
+      subtitle: "Visual Storytelling Engine",
+      description: "Ferramenta para criação de histórias em quadrinhos com suporte a IA. Organize personagens, cenas e gere prompts estruturados para manter consistência visual.",
+      path: "/comic-builder",
+      color: "from-indigo-500/20 to-violet-500/20",
+      borderColor: "border-indigo-500/40",
+      glowColor: "shadow-indigo-500/30",
+      emoji: "📚",
+      status: "ACTIVE",
+      tags: ["Creative", "AI", "Comics"]
     }
   ];
 
@@ -182,6 +208,10 @@ export default function CognitiveOverflowDashboard() {
                       'radial-gradient(circle at top right, rgba(34, 197, 94, 0.1), transparent 60%)' :
                       project.color.includes('amber') ?
                       'radial-gradient(circle at top right, rgba(251, 191, 36, 0.1), transparent 60%)' :
+                      project.color.includes('blue') ?
+                      'radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 60%)' :
+                      project.color.includes('indigo') ?
+                      'radial-gradient(circle at top right, rgba(99, 102, 241, 0.1), transparent 60%)' :
                       'radial-gradient(circle at top right, rgba(100, 116, 139, 0.1), transparent 60%)'
                     }
                   `
@@ -231,6 +261,10 @@ export default function CognitiveOverflowDashboard() {
                           ? 'bg-green-500/20 text-green-300'
                           : project.id === 'recursos'
                           ? 'bg-amber-500/20 text-amber-300'
+                          : project.id === 'tokenflow'
+                          ? 'bg-blue-500/20 text-blue-300'
+                          : project.id === 'comic-builder'
+                          ? 'bg-indigo-500/20 text-indigo-300'
                           : 'bg-slate-500/20 text-slate-300'
                       }`}
                       >
@@ -244,12 +278,16 @@ export default function CognitiveOverflowDashboard() {
                       size="lg"
                       className={`w-full font-mono font-bold transition-all group-hover:scale-105 ${
                         project.id === 'marco'
-                          ? 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/50 text-purple-300 hover:from-purple-500/50 hover:to-pink-500/50'
+                          ? 'bg-gradient-to-r from-purple-500/60 to-pink-500/60 border border-purple-400 text-white hover:from-purple-500/80 hover:to-pink-500/80 hover:text-white shadow-lg'
                           : project.id === 'matrix'
-                          ? 'bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-500/50 text-green-300 hover:from-green-500/50 hover:to-emerald-500/50'
+                          ? 'bg-gradient-to-r from-green-500/60 to-emerald-500/60 border border-green-400 text-white hover:from-green-500/80 hover:to-emerald-500/80 hover:text-white shadow-lg'
                           : project.id === 'recursos'
-                          ? 'bg-gradient-to-r from-amber-500/30 to-orange-500/30 border border-amber-500/50 text-amber-300 hover:from-amber-500/50 hover:to-orange-500/50'
-                          : 'bg-gradient-to-r from-slate-500/30 to-gray-500/30 border border-slate-500/50 text-slate-300 hover:from-slate-500/50 hover:to-gray-500/50'
+                          ? 'bg-gradient-to-r from-amber-500/60 to-orange-500/60 border border-amber-400 text-white hover:from-amber-500/80 hover:to-orange-500/80 hover:text-white shadow-lg'
+                          : project.id === 'tokenflow'
+                          ? 'bg-gradient-to-r from-blue-500/60 to-cyan-500/60 border border-blue-400 text-white hover:from-blue-500/80 hover:to-cyan-500/80 hover:text-white shadow-lg'
+                          : project.id === 'comic-builder'
+                          ? 'bg-gradient-to-r from-indigo-500/60 to-violet-500/60 border border-indigo-400 text-white hover:from-indigo-500/80 hover:to-violet-500/80 hover:text-white shadow-lg'
+                          : 'bg-gradient-to-r from-slate-500/60 to-gray-500/60 border border-slate-400 text-white hover:from-slate-500/80 hover:to-gray-500/80 hover:text-white shadow-lg'
                       }`}
                     >
                       ENTER PROJECT →
@@ -266,6 +304,10 @@ export default function CognitiveOverflowDashboard() {
                       ? 'bg-gradient-to-r from-green-500 to-emerald-500'
                       : project.id === 'recursos'
                       ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                      : project.id === 'tokenflow'
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500'
+                      : project.id === 'comic-builder'
+                      ? 'bg-gradient-to-r from-indigo-500 to-violet-500'
                       : 'bg-gradient-to-r from-slate-500 to-gray-500'
                   } animate-pulse`}></div>
                   <div className={`absolute right-0 -top-1 w-1.5 h-1.5 ${
@@ -275,6 +317,10 @@ export default function CognitiveOverflowDashboard() {
                       ? 'bg-emerald-500'
                       : project.id === 'recursos'
                       ? 'bg-orange-500'
+                      : project.id === 'tokenflow'
+                      ? 'bg-cyan-500'
+                      : project.id === 'comic-builder'
+                      ? 'bg-violet-500'
                       : 'bg-gray-500'
                   } rounded-full animate-ping`}></div>
                 </div>

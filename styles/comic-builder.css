@@ -1,0 +1,161 @@
+/* Comic Builder - Tema Roxo Original */
+
+/* Aplicar apenas dentro do Comic Builder */
+[data-project="comic-builder"] {
+  /* Cores primary roxas */
+  --heroui-primary-50: 251 236 254;
+  --heroui-primary-100: 237 184 254;
+  --heroui-primary-200: 196 181 253;
+  --heroui-primary-300: 147 51 234;
+  --heroui-primary-400: 126 34 206;
+  --heroui-primary-500: 107 33 168;
+  --heroui-primary-600: 88 28 135;
+  --heroui-primary-700: 69 26 108;
+  --heroui-primary-800: 59 29 93;
+  --heroui-primary-900: 49 25 79;
+  --heroui-primary: 147 51 234;
+  --heroui-primary-foreground: 255 255 255;
+  
+  /* Focus roxo */
+  --heroui-focus: 196 181 253;
+}
+
+/* Theme escuro específico para Comic Builder */
+.dark [data-project="comic-builder"] {
+  --heroui-primary-50: 59 9 108;
+  --heroui-primary-100: 82 15 131;
+  --heroui-primary-200: 115 24 162;
+  --heroui-primary-300: 152 35 194;
+  --heroui-primary-400: 192 49 226;
+  --heroui-primary-500: 221 98 237;
+  --heroui-primary-600: 241 130 246;
+  --heroui-primary-700: 252 173 249;
+  --heroui-primary-800: 253 213 249;
+  --heroui-primary-900: 254 236 254;
+  --heroui-primary: 221 98 237;
+  --heroui-primary-foreground: 255 255 255;
+  
+  --heroui-focus: 241 130 246;
+  --heroui-background: 18 18 18;
+  --heroui-foreground: 236 237 238;
+}
+
+/* Botões primary com tema roxo */
+[data-project="comic-builder"] .heroui-button[data-color="primary"],
+[data-project="comic-builder"] button[data-color="primary"],
+[data-project="comic-builder"] .bg-primary,
+[data-project="comic-builder"] .text-white.bg-primary-500 {
+  background: rgb(var(--heroui-primary)) !important;
+  color: rgb(var(--heroui-primary-foreground)) !important;
+}
+
+[data-project="comic-builder"] .heroui-button[data-color="primary"]:hover,
+[data-project="comic-builder"] button[data-color="primary"]:hover {
+  background: rgb(var(--heroui-primary-600)) !important;
+}
+
+/* Cards com bordas roxas */
+[data-project="comic-builder"] .heroui-card {
+  border-color: rgb(var(--heroui-primary) / 0.2);
+}
+
+/* Inputs com foco roxo */
+[data-project="comic-builder"] .heroui-input:focus-within {
+  border-color: rgb(var(--heroui-focus));
+  box-shadow: 0 0 0 2px rgb(var(--heroui-focus) / 0.3);
+}
+
+/* Tabs com cor roxa */
+[data-project="comic-builder"] .heroui-tabs-tab[data-selected="true"] {
+  color: rgb(var(--heroui-primary));
+}
+
+[data-project="comic-builder"] .heroui-tabs-cursor {
+  background: rgb(var(--heroui-primary));
+}
+
+/* Ícones primary roxos */
+[data-project="comic-builder"] .text-primary {
+  color: rgb(var(--heroui-primary)) !important;
+}
+
+/* Background gradientes com roxo */
+[data-project="comic-builder"] .bg-primary-50 {
+  background-color: rgb(var(--heroui-primary-50)) !important;
+}
+
+[data-project="comic-builder"] .bg-primary-100 {
+  background-color: rgb(var(--heroui-primary-100)) !important;
+}
+
+/* Bordas primary roxas */
+[data-project="comic-builder"] .border-primary {
+  border-color: rgb(var(--heroui-primary)) !important;
+}
+
+[data-project="comic-builder"] .border-primary\/20 {
+  border-color: rgb(var(--heroui-primary) / 0.2) !important;
+}
+
+/* Texto primary roxo */
+[data-project="comic-builder"] .text-primary-600 {
+  color: rgb(var(--heroui-primary-600)) !important;
+}
+
+/* Força TODOS os botões primary para roxo */
+[data-project="comic-builder"] button,
+[data-project="comic-builder"] button[data-color="primary"],
+[data-project="comic-builder"] .heroui-button {
+  --heroui-primary: 147 51 234 !important;
+  --heroui-primary-500: 147 51 234 !important;
+  background-color: rgb(147 51 234) !important;
+}
+
+[data-project="comic-builder"].dark button,
+[data-project="comic-builder"] .dark button,
+.dark [data-project="comic-builder"] button,
+.dark [data-project="comic-builder"] button[data-color="primary"],
+.dark [data-project="comic-builder"] .heroui-button {
+  --heroui-primary: 221 98 237 !important;
+  --heroui-primary-500: 221 98 237 !important;
+  background-color: rgb(221 98 237) !important;
+}
+
+/* Força botões específicos que podem estar com outras cores */
+[data-project="comic-builder"] .bg-warning,
+[data-project="comic-builder"] .bg-amber-500,
+[data-project="comic-builder"] .bg-orange-500,
+[data-project="comic-builder"] .bg-yellow-500 {
+  background: rgb(var(--heroui-primary)) !important;
+  color: rgb(var(--heroui-primary-foreground)) !important;
+}
+
+/* Força qualquer elemento com cor que não seja roxo */
+[data-project="comic-builder"] [class*="bg-amber"],
+[data-project="comic-builder"] [class*="bg-orange"],
+[data-project="comic-builder"] [class*="bg-yellow"],
+[data-project="comic-builder"] [class*="bg-warning"] {
+  background: rgb(var(--heroui-primary)) !important;
+  color: rgb(var(--heroui-primary-foreground)) !important;
+}
+
+/* Seletor ultra específico para garantir que TODOS os botões sejam roxos */
+[data-project="comic-builder"] button[class*="bg-"],
+[data-project="comic-builder"] .heroui-button[class*="bg-"],
+[data-project="comic-builder"] [role="button"],
+[data-project="comic-builder"] .w-full.bg-primary-500,
+[data-project="comic-builder"] .bg-primary.text-white {
+  background-color: rgb(147 51 234) !important;
+  background: rgb(147 51 234) !important;
+  color: white !important;
+}
+
+.dark [data-project="comic-builder"] button[class*="bg-"],
+.dark [data-project="comic-builder"] .heroui-button[class*="bg-"],
+.dark [data-project="comic-builder"] [role="button"],
+.dark [data-project="comic-builder"] .w-full.bg-primary-500,
+.dark [data-project="comic-builder"] .bg-primary.text-white {
+  background-color: rgb(221 98 237) !important;
+  background: rgb(221 98 237) !important;
+  color: white !important;
+} 
