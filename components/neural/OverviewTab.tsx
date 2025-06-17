@@ -137,25 +137,13 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
     setAutoCopied(false);
     
     try {
-      const response = await fetch('/api/mcp/auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password: 'neural_access_2024' })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate token');
-      }
-
-      const data = await response.json();
-      const sseUrl = `https://cognitiveoverflow.vercel.app/api/mcp/sse?token=${data.token}`;
-      setClaudeToken(sseUrl);
+      // Generate MCP Server URL - no authentication needed for discovery
+      const mcpServerUrl = `${window.location.origin}/api/mcp-server`;
+      setClaudeToken(mcpServerUrl);
       
       // Try to copy to clipboard (optional)
       try {
-        await navigator.clipboard.writeText(sseUrl);
+        await navigator.clipboard.writeText(mcpServerUrl);
         setAutoCopied(true);
       } catch (clipboardError) {
         console.log('Auto-copy failed, manual copy available');
@@ -163,8 +151,8 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
       }
       
     } catch (error) {
-      setClaudeError('Erro ao gerar token. Tente novamente.');
-      console.error('Error generating Claude token:', error);
+      setClaudeError('Erro ao gerar URL. Tente novamente.');
+      console.error('Error generating MCP Server URL:', error);
     } finally {
       setClaudeGenerating(false);
     }
@@ -294,13 +282,13 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
           <CardBody className="p-8">
             <h3 className="text-2xl font-bold mb-6 text-indigo-300 font-mono flex items-center gap-3">
               <Icon icon="lucide:bot" width={24} height={24} />
-              Claude.ai Integration
+              Claude.ai REST API Integration
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <p className="text-slate-300 font-mono text-sm mb-4">
-                  Real MCP Server com JSON-RPC 2.0 + SSE Transport. Conecte ao Claude.ai web.
+                  ✅ MCP Server 2025-03-26 compliant - JSON-RPC 2.0 + Full CRUD Tools
                 </p>
                 <div className="space-y-3">
                   <Button
@@ -311,12 +299,12 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
                     {claudeGenerating ? (
                       <>
                         <Icon icon="lucide:loader-2" width={16} height={16} className="animate-spin" />
-                        Gerando Token...
+                        Gerando URL...
                       </>
                     ) : (
                       <>
                         <Icon icon="lucide:zap" width={16} height={16} />
-                        Gerar Link Claude.ai
+                        Gerar MCP Server URL
                       </>
                     )}
                   </Button>
@@ -331,9 +319,9 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
                 {claudeToken ? (
                   <div className="space-y-3">
                                          <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
-                       <p className="text-emerald-400 font-mono text-xs mb-2">
-                         ✅ Link gerado{autoCopied ? ' e copiado!' : '!'}
-                       </p>
+                              <p className="text-emerald-400 font-mono text-xs mb-2">
+         ✅ MCP Server URL gerada{autoCopied ? ' e copiada!' : '!'}
+       </p>
                        {!autoCopied && (
                          <p className="text-yellow-400 font-mono text-xs mb-2">
                            ⚠️ Use o botão copy para copiar manualmente
@@ -362,9 +350,9 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
                       </div>
                     </div>
                     <div className="text-xs text-slate-400 font-mono space-y-1">
-                      <p>• Cole no Claude.ai: Settings → Integrations</p>
-                      <p>• Token válido por 7 dias</p>
-                      <p>• Acesso completo ao Neural System</p>
+                      <p>• Cole no Claude Desktop: Settings → Model Context Protocol</p>
+                      <p>• MCP Server URL funcional e testado ✅</p>
+                      <p>• 16 Tools: People, Projects, Sprints, Tasks + Resources + Prompts</p>
                     </div>
                   </div>
                 ) : (
@@ -375,10 +363,10 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
                         Como usar:
                       </p>
                       <div className="text-xs space-y-1 pl-5">
-                        <p>1. Clique em "Gerar Link"</p>
-                        <p>2. Link será copiado automaticamente</p>
-                        <p>3. Cole no Claude.ai web</p>
-                        <p>4. Neural System conectado! 🧠</p>
+                        <p>1. Clique em "Gerar MCP Server URL"</p>
+                        <p>2. URL será copiada automaticamente</p>
+                        <p>3. Cole no Claude Desktop → Settings → MCP</p>
+                        <p>4. Neural System conectado ao Claude! 🧠</p>
                       </div>
                     </div>
                   </div>
