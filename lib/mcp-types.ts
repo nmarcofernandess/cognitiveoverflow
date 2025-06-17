@@ -97,19 +97,139 @@ export interface MCPPerson extends Person {
   notes_count: number;
   notes?: PersonNote[];
   last_interaction?: string;
+  interaction_frequency?: number;
+  relationship_health?: 'active' | 'stale' | 'dormant';
+  tags_used?: string[];
 }
 
 export interface MCPPeopleQuery {
   relation?: string;
   limit?: number;
-  include_notes?: boolean;
+  include_notes?: boolean | 'latest' | 'count';
   search?: string;
+  updated_since?: string;
+  last_interaction?: string;
+  has_notes?: boolean;
+  sort?: 'newest' | 'oldest' | 'name' | 'interaction' | 'notes_count';
+  tags?: string;
+  relation_type?: 'family' | 'work' | 'friends' | 'professional';
+  relationship_health?: 'active' | 'stale' | 'dormant';
 }
 
 export interface MCPPeopleResponse {
   people: MCPPerson[];
   total_count: number;
   filters_applied: MCPPeopleQuery;
+  performance?: {
+    query_time_ms: number;
+    cached: boolean;
+  };
+}
+
+// ====== People Search Types ======
+export interface MCPPeopleSearchQuery {
+  q: string;
+  fields?: string[];
+  fuzzy?: boolean;
+  limit?: number;
+  include_notes?: boolean | 'highlights';
+  min_score?: number;
+}
+
+export interface MCPSearchHighlight {
+  field: string;
+  snippet: string;
+  score: number;
+}
+
+export interface MCPPersonSearchResult extends MCPPerson {
+  search_score: number;
+  highlights: MCPSearchHighlight[];
+}
+
+export interface MCPPeopleSearchResponse {
+  results: MCPPersonSearchResult[];
+  total_count: number;
+  query: MCPPeopleSearchQuery;
+  search_time_ms: number;
+}
+
+// ====== People Full Profile Types ======
+export interface MCPPersonFull extends MCPPerson {
+  notes: PersonNote[];
+  stats: {
+    notes_count: number;
+    first_interaction: string;
+    last_interaction: string;
+    interaction_frequency: number;
+    tags_used: string[];
+    avg_notes_per_month: number;
+    days_since_last_contact: number;
+  };
+  timeline: Array<{
+    date: string;
+    type: 'note_added' | 'person_updated' | 'person_created';
+    title: string;
+    summary: string;
+    tags?: string[];
+  }>;
+  relationships?: {
+    health: 'active' | 'stale' | 'dormant';
+    health_reason: string;
+    suggested_actions: string[];
+  };
+}
+
+export interface MCPPersonFullResponse {
+  person: MCPPersonFull;
+  query_time_ms: number;
+}
+
+// ====== People Analytics Types ======
+export interface MCPPeopleAnalytics {
+  total_people: number;
+  by_relation: Record<string, number>;
+  by_relation_type: {
+    family: number;
+    work: number;
+    friends: number;
+    professional: number;
+    other: number;
+  };
+  interaction_summary: {
+    last_7_days: number;
+    last_30_days: number;
+    last_90_days: number;
+    never_contacted: number;
+    total_interactions: number;
+  };
+  top_tags: Array<{
+    tag: string;
+    count: number;
+    people_count: number;
+  }>;
+  relationship_health: {
+    active: number;
+    stale: number;
+    dormant: number;
+  };
+  monthly_activity: Array<{
+    month: string;
+    notes_count: number;
+    people_contacted: number;
+  }>;
+  insights: {
+    most_active_relationship: string;
+    longest_without_contact: string;
+    most_used_tags: string[];
+    suggested_contacts: string[];
+  };
+}
+
+export interface MCPPeopleAnalyticsResponse {
+  analytics: MCPPeopleAnalytics;
+  generated_at: string;
+  query_time_ms: number;
 }
 
 // ====== Extended Projects Types ======
