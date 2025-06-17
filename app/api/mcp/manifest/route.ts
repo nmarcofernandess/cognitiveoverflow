@@ -10,10 +10,30 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id') || Date.now().toString();
 
-  // 🔐 AUTH REQUIRED
+  // 🔐 AUTH REQUIRED - But show helpful message for Claude.ai integration
   const auth = await requireMCPAuth(request, id);
   if (!auth.success) {
-    return auth.response;
+    // Add helpful message for Claude.ai web integration
+    const errorResponse = await auth.response.json();
+    
+    if (errorResponse.error?.message?.includes('Authorization required')) {
+      errorResponse.error.message = 'For Claude.ai integration: First POST to /api/mcp/auth with {"password": "neural_access_2024"} to get token, then use ?token=YOUR_TOKEN';
+      errorResponse.help = {
+        step1: 'POST https://cognitiveoverflow.vercel.app/api/mcp/auth',
+        body: '{"password": "neural_access_2024"}', 
+        step2: 'Use returned token: ?token=YOUR_TOKEN',
+        example: 'https://cognitiveoverflow.vercel.app/api/mcp/manifest?token=YOUR_TOKEN'
+      };
+    }
+    
+    return NextResponse.json(errorResponse, {
+      status: auth.response.status,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      }
+    });
   }
 
   try {

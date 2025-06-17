@@ -55,19 +55,24 @@ export function validateJWTToken(token: string): { valid: boolean; claims?: MCPT
   }
 }
 
-// ====== Bearer Token Extraction ======
+// ====== Bearer Token OR Query Param Extraction ======
 export function extractBearerToken(request: Request): string | null {
   const authHeader = request.headers.get('Authorization');
   
-  if (!authHeader) {
-    return null;
+  // Method 1: Bearer token (local MCP)
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7); // Remove "Bearer "
   }
   
-  if (!authHeader.startsWith('Bearer ')) {
-    return null;
+  // Method 2: Query parameter token (Claude.ai web)
+  const url = new URL(request.url);
+  const queryToken = url.searchParams.get('token');
+  
+  if (queryToken) {
+    return queryToken;
   }
   
-  return authHeader.slice(7); // Remove "Bearer "
+  return null;
 }
 
 // ====== Main Auth Middleware ======
@@ -87,7 +92,7 @@ export async function validateMCPAuth(request: Request): Promise<MCPValidationRe
     
     return {
       isValid: false,
-      error: 'Authorization header with Bearer token required'
+      error: 'Authorization required: use Bearer header OR ?token=neural_access_2024 query param'
     };
   }
 

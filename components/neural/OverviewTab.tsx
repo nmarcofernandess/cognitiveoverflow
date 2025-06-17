@@ -124,6 +124,85 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
     URL.revokeObjectURL(url);
   };
 
+  // 🔥 Claude.ai Integration State
+  const [claudeToken, setClaudeToken] = useState<string>('');
+  const [claudeGenerating, setClaudeGenerating] = useState(false);
+  const [claudeError, setClaudeError] = useState<string>('');
+  const [autoCopied, setAutoCopied] = useState(false);
+  const [showCopySuccess, setShowCopySuccess] = useState(false);
+
+  const generateClaudeLink = async () => {
+    setClaudeGenerating(true);
+    setClaudeError('');
+    setAutoCopied(false);
+    
+    try {
+      const response = await fetch('/api/mcp/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: 'neural_access_2024' })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate token');
+      }
+
+      const data = await response.json();
+      const manifestUrl = `https://cognitiveoverflow.vercel.app/api/mcp/manifest?token=${data.token}`;
+      setClaudeToken(manifestUrl);
+      
+      // Try to copy to clipboard (optional)
+      try {
+        await navigator.clipboard.writeText(manifestUrl);
+        setAutoCopied(true);
+      } catch (clipboardError) {
+        console.log('Auto-copy failed, manual copy available');
+        setAutoCopied(false);
+      }
+      
+    } catch (error) {
+      setClaudeError('Erro ao gerar token. Tente novamente.');
+      console.error('Error generating Claude token:', error);
+    } finally {
+      setClaudeGenerating(false);
+    }
+  };
+
+  const copyClaudeLink = async () => {
+    if (claudeToken) {
+      try {
+        await navigator.clipboard.writeText(claudeToken);
+        setAutoCopied(true);
+        setShowCopySuccess(true);
+        
+        // Reset feedback after 2 seconds
+        setTimeout(() => {
+          setShowCopySuccess(false);
+        }, 2000);
+        
+      } catch (error) {
+        // Fallback: Seleção manual
+        const input = document.querySelector('input[readonly]') as HTMLInputElement;
+        if (input) {
+          input.select();
+          input.setSelectionRange(0, 99999); // Para mobile
+          try {
+            document.execCommand('copy');
+            setAutoCopied(true);
+            setShowCopySuccess(true);
+            setTimeout(() => {
+              setShowCopySuccess(false);
+            }, 2000);
+          } catch (e) {
+            console.log('Clipboard not available, manual copy required');
+          }
+        }
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -205,11 +284,116 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
         </Card>
       </motion.div>
 
-      {/* Neural Manifest */}
+      {/* Claude.ai Integration */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
+      >
+        <Card className="w-full bg-gradient-to-r from-indigo-900/40 to-purple-900/40 backdrop-blur-sm border border-indigo-400/30">
+          <CardBody className="p-8">
+            <h3 className="text-2xl font-bold mb-6 text-indigo-300 font-mono flex items-center gap-3">
+              <Icon icon="lucide:bot" width={24} height={24} />
+              Claude.ai Integration
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-slate-300 font-mono text-sm mb-4">
+                  Gere um link personalizado para conectar o Neural System ao Claude.ai web.
+                </p>
+                <div className="space-y-3">
+                  <Button
+                    onClick={generateClaudeLink}
+                    isLoading={claudeGenerating}
+                    className="bg-indigo-600/80 border border-indigo-400/50 text-white hover:bg-indigo-600/90 font-mono w-full"
+                  >
+                    {claudeGenerating ? (
+                      <>
+                        <Icon icon="lucide:loader-2" width={16} height={16} className="animate-spin" />
+                        Gerando Token...
+                      </>
+                    ) : (
+                      <>
+                        <Icon icon="lucide:zap" width={16} height={16} />
+                        Gerar Link Claude.ai
+                      </>
+                    )}
+                  </Button>
+                  
+                  {claudeError && (
+                    <p className="text-red-400 text-xs font-mono">{claudeError}</p>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                {claudeToken ? (
+                  <div className="space-y-3">
+                                         <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
+                       <p className="text-emerald-400 font-mono text-xs mb-2">
+                         ✅ Link gerado{autoCopied ? ' e copiado!' : '!'}
+                       </p>
+                       {!autoCopied && (
+                         <p className="text-yellow-400 font-mono text-xs mb-2">
+                           ⚠️ Use o botão copy para copiar manualmente
+                         </p>
+                       )}
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={claudeToken}
+                          readOnly
+                          className="bg-slate-800/60 border border-slate-600/40 text-slate-300 font-mono text-xs px-3 py-2 rounded flex-1 focus:outline-none focus:border-indigo-400/60"
+                        />
+                                                 <Button
+                           onClick={copyClaudeLink}
+                           size="sm"
+                           className={`${showCopySuccess 
+                             ? 'bg-emerald-600/60 border-emerald-400/40 text-emerald-300' 
+                             : 'bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:bg-slate-600/60'
+                           }`}
+                         >
+                           <Icon 
+                             icon={showCopySuccess ? "lucide:check" : "lucide:copy"} 
+                             width={14} 
+                             height={14} 
+                           />
+                         </Button>
+                      </div>
+                    </div>
+                    <div className="text-xs text-slate-400 font-mono space-y-1">
+                      <p>• Cole no Claude.ai: Settings → Integrations</p>
+                      <p>• Token válido por 7 dias</p>
+                      <p>• Acesso completo ao Neural System</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
+                    <div className="text-slate-400 font-mono text-sm space-y-2">
+                      <p className="flex items-center gap-2">
+                        <Icon icon="lucide:info" width={16} height={16} />
+                        Como usar:
+                      </p>
+                      <div className="text-xs space-y-1 pl-5">
+                        <p>1. Clique em "Gerar Link"</p>
+                        <p>2. Link será copiado automaticamente</p>
+                        <p>3. Cole no Claude.ai web</p>
+                        <p>4. Neural System conectado! 🧠</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </motion.div>
+
+      {/* Neural Manifest */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
       >
         <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
           <CardBody className="p-8">
@@ -269,7 +453,7 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.4 }}
       >
         <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
           <CardBody className="p-8">
@@ -310,7 +494,7 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.5 }}
         className="text-center"
       >
         <div className="inline-flex items-center gap-4 bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 rounded-lg px-6 py-4">
