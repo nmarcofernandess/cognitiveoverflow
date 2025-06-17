@@ -21,8 +21,9 @@ export async function GET(request: Request) {
       errorResponse.help = {
         step1: 'POST https://cognitiveoverflow.vercel.app/api/mcp/auth',
         body: '{"password": "neural_access_2024"}', 
-        step2: 'Use returned token: ?token=YOUR_TOKEN',
-        example: 'https://cognitiveoverflow.vercel.app/api/mcp/manifest?token=YOUR_TOKEN'
+        step2: 'Use SSE endpoint for real MCP server',
+        sse_endpoint: 'https://cognitiveoverflow.vercel.app/api/mcp/sse?token=YOUR_TOKEN',
+        note: 'This is now a proper JSON-RPC 2.0 MCP server with SSE transport!'
       };
     }
     

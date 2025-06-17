@@ -1,28 +1,21 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
-import { 
-  MCPPersonFullResponse, 
-  MCPPersonFull,
-  createMCPResponse, 
-  createMCPError, 
-  MCP_ERROR_CODES 
-} from '../../../../../lib/mcp-types';
-import { requireMCPAuth } from '../../../../../lib/mcp-auth';
+import { MCPPerson } from '../../../../../lib/mcp-types';
+import { validateMCPAuth } from '../../../../../lib/mcp-auth';
+import { successResponse, errorResponse } from '../../../../../lib/mcp-response';
 
+// ====== GET - Get person by ID (simplificado) ======
 export async function GET(request: Request, context: { params: { id: string } }) {
   const startTime = Date.now();
-  const { searchParams } = new URL(request.url);
-  const requestId = searchParams.get('id') || Date.now().toString();
   const personId = context.params.id;
 
   // 🔐 AUTH REQUIRED
-  const auth = await requireMCPAuth(request, requestId);
-  if (!auth.success) {
-    return auth.response;
+  if (!validateMCPAuth(request)) {
+    return NextResponse.json(errorResponse('Unauthorized'), { status: 401 });
   }
 
   try {
-    // Get person details
+    // Get person with notes count
     const { data: person, error: personError } = await supabase
       .from('people')
       .select('*')
@@ -31,138 +24,169 @@ export async function GET(request: Request, context: { params: { id: string } })
 
     if (personError || !person) {
       return NextResponse.json(
-        createMCPError(requestId, MCP_ERROR_CODES.NOT_FOUND, `Person with ID ${personId} not found`),
-        { 
-          status: 404,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          }
-        }
+        errorResponse('Person not found'),
+        { status: 404 }
       );
     }
 
-    // Get ALL notes
-    const { data: notes, error: notesError } = await supabase
+    // Get notes count and latest note
+    const { data: notes, count } = await supabase
       .from('person_notes')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('person_id', personId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(5); // Last 5 notes for context
 
-    if (notesError) {
-      return NextResponse.json(
-        createMCPError(requestId, MCP_ERROR_CODES.DATABASE_ERROR, "Failed to fetch notes"),
-        { 
-          status: 500,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          }
-        }
-      );
-    }
-
-    // Calculate stats
-    const allTags = Array.from(new Set((notes || []).flatMap(note => note.tags || [])));
-    const notesCount = (notes || []).length;
-    
-    const lastNote = (notes || [])[0];
-    const lastInteraction = lastNote ? lastNote.created_at : person.created_at;
-    const daysSince = Math.floor((Date.now() - new Date(lastInteraction).getTime()) / (1000 * 60 * 60 * 24));
-    
-    let health: 'active' | 'stale' | 'dormant' = 'dormant';
-    if (notesCount > 0 && daysSince <= 30) health = 'active';
-    else if (notesCount > 0 && daysSince <= 90) health = 'stale';
-
-    // Build timeline
-    const timeline = [
-      {
-        date: person.created_at,
-        type: 'person_created' as const,
-        title: 'Pessoa adicionada',
-        summary: `${person.name} foi adicionado como ${person.relation}`
-      },
-      ...(notes || []).map(note => ({
-        date: note.created_at,
-        type: 'note_added' as const,
-        title: note.title,
-        summary: note.content || 'Nota adicionada',
-        tags: note.tags
-      }))
-    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    const stats = {
-      notes_count: notesCount,
-      first_interaction: person.created_at,
-      last_interaction: lastInteraction,
-      interaction_frequency: notesCount / 6, // rough estimate
-      tags_used: allTags,
-      avg_notes_per_month: notesCount / 6,
-      days_since_last_contact: daysSince
-    };
-
-    const relationships = {
-      health,
-      health_reason: `${daysSince} dias desde última interação`,
-      suggested_actions: health === 'active' ? 
-        ['Continue mantendo contato'] : 
-        ['Retomar contato em breve', 'Revisar histórico']
-    };
-
-    const fullPerson: MCPPersonFull = {
+    const enhancedPerson: MCPPerson = {
       ...person,
-      notes_count: notesCount,
+      notes_count: count || 0,
       notes: notes || [],
-      last_interaction: lastInteraction,
-      interaction_frequency: stats.interaction_frequency,
-      relationship_health: health,
-      tags_used: allTags,
-      stats,
-      timeline,
-      relationships
+      last_interaction: notes?.[0]?.created_at || person.updated_at
     };
 
-    const response: MCPPersonFullResponse = {
-      person: fullPerson,
-      query_time_ms: Date.now() - startTime
-    };
+    const queryTime = Date.now() - startTime;
 
     return NextResponse.json(
-      createMCPResponse(requestId, response),
+      successResponse(enhancedPerson, queryTime),
       {
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          'Content-Type': 'application/json',
+          'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
         }
       }
     );
 
   } catch (error) {
+    console.error('Error getting person:', error);
     return NextResponse.json(
-      createMCPError(requestId, MCP_ERROR_CODES.INTERNAL_ERROR, "Internal server error"),
-      { 
-        status: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        }
-      }
+      errorResponse('Internal server error'),
+      { status: 500 }
     );
   }
 }
 
+// ====== PUT - Update person ======
+export async function PUT(request: Request, context: { params: { id: string } }) {
+  // 🔐 AUTH REQUIRED
+  if (!validateMCPAuth(request)) {
+    return NextResponse.json(errorResponse('Unauthorized'), { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const personId = context.params.id;
+
+    // Update person
+    const { data, error } = await supabase
+      .from('people')
+      .update(body)
+      .eq('id', personId)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json(
+          errorResponse('Person not found'),
+          { status: 404 }
+        );
+      }
+      
+      console.error('Error updating person:', error);
+      return NextResponse.json(
+        errorResponse('Update failed'),
+        { status: 500 }
+      );
+    }
+
+    // Add notes_count for consistency
+    const enhancedPerson: MCPPerson = {
+      ...data,
+      notes_count: 0 // Will be fetched separately if needed
+    };
+
+    return NextResponse.json(
+      successResponse(enhancedPerson),
+      {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+        }
+      }
+    );
+
+  } catch (error) {
+    console.error('Error parsing request body:', error);
+    return NextResponse.json(
+      errorResponse('Invalid request body'),
+      { status: 400 }
+    );
+  }
+}
+
+// ====== DELETE - Remove person ======
+export async function DELETE(request: Request, context: { params: { id: string } }) {
+  // 🔐 AUTH REQUIRED
+  if (!validateMCPAuth(request)) {
+    return NextResponse.json(errorResponse('Unauthorized'), { status: 401 });
+  }
+
+  try {
+    const personId = context.params.id;
+
+    // Delete person (notes will cascade delete based on foreign key)
+    const { error } = await supabase
+      .from('people')
+      .delete()
+      .eq('id', personId);
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json(
+          errorResponse('Person not found'),
+          { status: 404 }
+        );
+      }
+      
+      console.error('Error deleting person:', error);
+      return NextResponse.json(
+        errorResponse('Delete failed'),
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      successResponse({ deleted: true }),
+      {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+        }
+      }
+    );
+
+  } catch (error) {
+    console.error('Error deleting person:', error);
+    return NextResponse.json(
+      errorResponse('Internal server error'),
+      { status: 500 }
+    );
+  }
+}
+
+// ====== OPTIONS - CORS ======
 export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+  return NextResponse.json(
+    {},
+    {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+      }
+    }
+  );
 } 

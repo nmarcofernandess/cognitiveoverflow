@@ -13,9 +13,16 @@ import {
   isTokenExpired 
 } from './mcp-security';
 
-// ====== JWT Constants ======
+// ====== Constants ======
 const JWT_SECRET = process.env.MCP_SECRET_KEY || 'neural_matrix_jwt_secret_trinity_delineador_2024_hardcore';
 const TOKEN_EXPIRATION = 7 * 24 * 60 * 60; // 7 dias em segundos
+const API_KEY = process.env.NEURAL_API_KEY || 'neural_2024_simple';
+
+// ====== API Key Validation (Simples) ======
+export function validateApiKey(request: Request): boolean {
+  const apiKey = request.headers.get('X-API-Key');
+  return apiKey === API_KEY;
+}
 
 // ====== JWT Token Generation ======
 export function generateMCPToken(clientIP: string, clientId?: string): string {
@@ -25,7 +32,7 @@ export function generateMCPToken(clientIP: string, clientId?: string): string {
     sub: 'marco', // user id
     iat: now,
     exp: now + TOKEN_EXPIRATION,
-    scope: ['read'], // por enquanto só read, futuro: write
+    scope: ['read', 'write'], // Agora inclui write
     client_id: clientId,
     // Only include IP for non-Claude.ai tokens (strict security for local)
     ...(clientId !== 'claude_web_client' && { ip: clientIP })
@@ -76,172 +83,104 @@ export function extractBearerToken(request: Request): string | null {
   return null;
 }
 
-// ====== Main Auth Middleware ======
-export async function validateMCPAuth(request: Request): Promise<MCPValidationResult> {
+// ====== Unified Auth Validation ======
+export function validateMCPAuth(request: Request): boolean {
+  // Para Claude: Bearer token
+  if (request.headers.get('Authorization')?.startsWith('Bearer ')) {
+    return validateJWTToken(extractBearerToken(request)!).valid;
+  }
+  
+  // Para Frontend: API Key
+  return validateApiKey(request);
+}
+
+// ====== Legacy Auth Middleware (manter compatibilidade) ======
+export async function requireMCPAuth(
+  request: Request, 
+  id: string | number
+): Promise<{ success: true; claims?: MCPTokenClaims } | { success: false; response: Response }> {
+  
   const clientIP = getClientIP(request);
   
-  // 1. Extract Bearer token
-  const token = extractBearerToken(request);
-  
-  if (!token) {
-    logSecurityEvent({
-      timestamp: new Date().toISOString(),
-      event: 'auth_attempt',
-      ip: clientIP,
-      details: { error: 'No token provided' }
-    });
-    
-    return {
-      isValid: false,
-      error: 'Authorization required: use Bearer header OR ?token=neural_access_2024 query param'
-    };
-  }
-
-  // 2. Rate limiting check
+  // Verificar rate limiting primeiro
   const rateLimit = checkRateLimit(`api_${clientIP}`, RATE_LIMIT_CONFIGS.API);
   
   if (!rateLimit.allowed) {
-    logSecurityEvent({
-      timestamp: new Date().toISOString(),
-      event: 'rate_limit',
-      ip: clientIP,
-      details: { reason: 'API rate limit exceeded', state: rateLimit.state }
-    });
-    
     return {
-      isValid: false,
-      error: 'Rate limit exceeded',
-      rateLimitExceeded: true
+      success: false,
+      response: new Response(
+        JSON.stringify({ error: { message: 'Rate limit exceeded', code: 'RATE_LIMITED' } }),
+        { 
+          status: 429,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
     };
   }
 
-  // 3. Validate JWT token
-  const tokenValidation = validateJWTToken(token);
-  
-  if (!tokenValidation.valid) {
-    logSecurityEvent({
-      timestamp: new Date().toISOString(),
-      event: 'auth_failure',
-      ip: clientIP,
-      details: { error: tokenValidation.error, token_preview: token.slice(0, 20) + '...' }
-    });
-    
-    return {
-      isValid: false,
-      error: tokenValidation.error || 'Invalid token'
-    };
-  }
-
-  const claims = tokenValidation.claims!;
-
-  // 4. IP consistency check (skip for Claude.ai web tokens)
-  const isClaudeWebToken = claims.client_id === 'claude_web_client';
-  
-  if (!isClaudeWebToken && claims.ip && claims.ip !== clientIP) {
+  // Tentar autenticação
+  if (!validateMCPAuth(request)) {
     logSecurityEvent({
       timestamp: new Date().toISOString(),
       event: 'auth_failure',
       ip: clientIP,
-      details: { 
-        error: 'IP mismatch',
-        token_ip: claims.ip,
-        request_ip: clientIP 
-      }
+      details: { endpoint: new URL(request.url).pathname }
     });
-    
+
     return {
-      isValid: false,
-      error: 'Token IP mismatch'
+      success: false,
+      response: new Response(
+        JSON.stringify({ error: { message: 'Unauthorized', code: 'UNAUTHORIZED' } }),
+        { 
+          status: 401,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
     };
   }
 
-  // 5. Success!
+  // Log sucesso
   logSecurityEvent({
     timestamp: new Date().toISOString(),
     event: 'api_access',
     ip: clientIP,
-    identifier: claims.client_id,
     details: { 
-      user: claims.sub,
-      scope: claims.scope,
       endpoint: new URL(request.url).pathname,
-      claude_web_integration: isClaudeWebToken
+      auth_method: request.headers.get('Authorization') ? 'jwt' : 'api_key'
     }
   });
 
-  return {
-    isValid: true,
-    claims
-  };
-}
-
-// ====== Auth Helper for Route Handlers ======
-export async function requireMCPAuth(
-  request: Request, 
-  id: string | number
-): Promise<{ success: true; claims: MCPTokenClaims } | { success: false; response: Response }> {
+  // Tentar extrair claims do JWT se disponível
+  const token = extractBearerToken(request);
+  let claims: MCPTokenClaims | undefined;
   
-  const auth = await validateMCPAuth(request);
-  
-  if (!auth.isValid) {
-    let errorCode: number = MCP_ERROR_CODES.UNAUTHORIZED;
-    let statusCode = 401;
-    
-    if (auth.rateLimitExceeded) {
-      errorCode = MCP_ERROR_CODES.RATE_LIMITED;
-      statusCode = 429;
-    } else if (auth.error?.includes('expired')) {
-      errorCode = MCP_ERROR_CODES.TOKEN_EXPIRED;
-    } else if (auth.error?.includes('Invalid')) {
-      errorCode = MCP_ERROR_CODES.INVALID_TOKEN;
+  if (token) {
+    const validation = validateJWTToken(token);
+    if (validation.valid) {
+      claims = validation.claims;
     }
-    
-    const errorResponse = {
-      jsonrpc: "2.0" as const,
-      id,
-      error: {
-        code: errorCode,
-        message: auth.error || 'Authentication failed',
-        data: auth.rateLimitExceeded ? { 
-          retry_after: RATE_LIMIT_CONFIGS.API.windowMs / 1000 
-        } : undefined
-      }
-    };
-    
-    return {
-      success: false,
-      response: new Response(JSON.stringify(errorResponse), {
-        status: statusCode,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          'Content-Type': 'application/json',
-          ...(auth.rateLimitExceeded && {
-            'Retry-After': String(RATE_LIMIT_CONFIGS.API.windowMs / 1000)
-          })
-        }
-      })
-    };
   }
-  
-  return {
-    success: true,
-    claims: auth.claims!
-  };
+
+  return { success: true, claims };
 }
 
-// ====== Token Info Utilities ======
+// ====== Token Info Helper ======
 export function getTokenInfo(token: string): { valid: boolean; claims?: any; timeLeft?: number } {
   const validation = validateJWTToken(token);
   
   if (!validation.valid || !validation.claims) {
     return { valid: false };
   }
-  
+
   const now = Math.floor(Date.now() / 1000);
   const timeLeft = validation.claims.exp - now;
-  
+
   return {
     valid: true,
     claims: validation.claims,

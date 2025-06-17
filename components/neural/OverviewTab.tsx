@@ -150,12 +150,12 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
       }
 
       const data = await response.json();
-      const manifestUrl = `https://cognitiveoverflow.vercel.app/api/mcp/manifest?token=${data.token}`;
-      setClaudeToken(manifestUrl);
+      const sseUrl = `https://cognitiveoverflow.vercel.app/api/mcp/sse?token=${data.token}`;
+      setClaudeToken(sseUrl);
       
       // Try to copy to clipboard (optional)
       try {
-        await navigator.clipboard.writeText(manifestUrl);
+        await navigator.clipboard.writeText(sseUrl);
         setAutoCopied(true);
       } catch (clipboardError) {
         console.log('Auto-copy failed, manual copy available');
@@ -300,7 +300,7 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <p className="text-slate-300 font-mono text-sm mb-4">
-                  Gere um link personalizado para conectar o Neural System ao Claude.ai web.
+                  Real MCP Server com JSON-RPC 2.0 + SSE Transport. Conecte ao Claude.ai web.
                 </p>
                 <div className="space-y-3">
                   <Button
