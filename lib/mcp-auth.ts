@@ -27,7 +27,8 @@ export function generateMCPToken(clientIP: string, clientId?: string): string {
     exp: now + TOKEN_EXPIRATION,
     scope: ['read'], // por enquanto só read, futuro: write
     client_id: clientId,
-    ip: clientIP
+    // Only include IP for non-Claude.ai tokens (strict security for local)
+    ...(clientId !== 'claude_web_client' && { ip: clientIP })
   };
 
   return jwt.sign(claims, JWT_SECRET, { algorithm: 'HS256' });
@@ -133,8 +134,10 @@ export async function validateMCPAuth(request: Request): Promise<MCPValidationRe
 
   const claims = tokenValidation.claims!;
 
-  // 4. IP consistency check (opcional, mas recomendado)
-  if (claims.ip && claims.ip !== clientIP) {
+  // 4. IP consistency check (skip for Claude.ai web tokens)
+  const isClaudeWebToken = claims.client_id === 'claude_web_client';
+  
+  if (!isClaudeWebToken && claims.ip && claims.ip !== clientIP) {
     logSecurityEvent({
       timestamp: new Date().toISOString(),
       event: 'auth_failure',
@@ -161,7 +164,8 @@ export async function validateMCPAuth(request: Request): Promise<MCPValidationRe
     details: { 
       user: claims.sub,
       scope: claims.scope,
-      endpoint: new URL(request.url).pathname
+      endpoint: new URL(request.url).pathname,
+      claude_web_integration: isClaudeWebToken
     }
   });
 
