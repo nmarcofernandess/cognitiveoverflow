@@ -1,0 +1,1137 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Marco Neural System MCP API",
+    "version": "1.0.0",
+    "description": "Enterprise-grade personal knowledge management API providing access to relationships, projects, and productivity analytics through secure JWT authentication.",
+    "contact": {
+      "name": "Marco Fernandes",
+      "url": "https://cognitiveoverflow.vercel.app"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://cognitiveoverflow.vercel.app/api/mcp",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:3000/api/mcp",
+      "description": "Development server"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Authenticate and get JWT token",
+        "description": "Authenticate with system password and receive a JWT token valid for 7 days",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["password"],
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "description": "System authentication password",
+                    "example": "neural_access_2024"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/manifest": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Get system information and statistics",
+        "description": "Returns system overview, available endpoints, and current statistics",
+        "responses": {
+          "200": {
+            "description": "System manifest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/people": {
+      "get": {
+        "tags": ["People"],
+        "summary": "List people with filtering and pagination",
+        "description": "Get a list of people in the network with advanced filtering options",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of results to return",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Pagination offset",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "relation_type",
+            "in": "query",
+            "description": "Filter by relationship type",
+            "schema": {
+              "type": "string",
+              "enum": ["family", "work", "friends", "professional"]
+            }
+          },
+          {
+            "name": "relationship_health",
+            "in": "query",
+            "description": "Filter by relationship health status",
+            "schema": {
+              "type": "string",
+              "enum": ["active", "stale", "needs_attention"]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort order",
+            "schema": {
+              "type": "string",
+              "enum": ["name", "last_contact", "notes_count"],
+              "default": "name"
+            }
+          },
+          {
+            "name": "include_notes",
+            "in": "query",
+            "description": "Include notes in response",
+            "schema": {
+              "type": "string",
+              "enum": ["latest", "all", "highlights"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "People list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeopleListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/people/search": {
+      "get": {
+        "tags": ["People"],
+        "summary": "Search people with fuzzy matching",
+        "description": "Advanced fuzzy search across people names, descriptions, and notes",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search query",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Fields to search in",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["name", "tldr", "notes"]
+              },
+              "default": ["name", "tldr", "notes"]
+            }
+          },
+          {
+            "name": "fuzzy",
+            "in": "query",
+            "description": "Enable fuzzy matching",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          {
+            "name": "min_score",
+            "in": "query",
+            "description": "Minimum match score",
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeopleSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/people/{id}": {
+      "get": {
+        "tags": ["People"],
+        "summary": "Get person details",
+        "description": "Get detailed information about a specific person",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Person ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Person details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/people/analytics": {
+      "get": {
+        "tags": ["People"],
+        "summary": "Get people analytics dashboard",
+        "description": "Get comprehensive analytics about relationships and contact patterns",
+        "responses": {
+          "200": {
+            "description": "People analytics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeopleAnalyticsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "List projects with filtering",
+        "description": "Get a list of projects with advanced filtering and inclusion options",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of results to return",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by project status",
+            "schema": {
+              "type": "string",
+              "enum": ["active", "completed", "on_hold", "cancelled"]
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "description": "Filter by priority level",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            }
+          },
+          {
+            "name": "include_sprints",
+            "in": "query",
+            "description": "Include sprint information",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "include_blockers",
+            "in": "query",
+            "description": "Include blocker analysis",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Projects list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectsListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/projects/active": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "Get active projects dashboard",
+        "description": "Get a dashboard view of currently active projects with health scoring",
+        "responses": {
+          "200": {
+            "description": "Active projects dashboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveProjectsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/projects/search": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "Search projects",
+        "description": "Advanced search across project names, descriptions, and content",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search query",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "include_sprints",
+            "in": "query",
+            "description": "Include sprint details in results",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "include_blockers",
+            "in": "query",
+            "description": "Include blocker analysis",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/projects/tasks": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "Get cross-project tasks",
+        "description": "Get tasks across all projects with filtering and priority analysis",
+        "parameters": [
+          {
+            "name": "priority_min",
+            "in": "query",
+            "description": "Minimum priority level",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            }
+          },
+          {
+            "name": "priority_max",
+            "in": "query",
+            "description": "Maximum priority level",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort order",
+            "schema": {
+              "type": "string",
+              "enum": ["priority", "urgency", "deadline", "created_at"],
+              "default": "priority"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cross-project tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTasksResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/projects/analytics": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "Get project analytics dashboard",
+        "description": "Get comprehensive analytics about project portfolio performance",
+        "responses": {
+          "200": {
+            "description": "Project analytics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectAnalyticsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token obtained from /auth endpoint"
+      }
+    },
+    "schemas": {
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "description": "Unique request identifier"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string",
+                "description": "JWT authentication token"
+              },
+              "expires_in": {
+                "type": "integer",
+                "description": "Token expiry in seconds (604800 = 7 days)"
+              },
+              "scope": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Token permissions"
+              }
+            }
+          }
+        }
+      },
+      "ManifestResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "example": "Marco Neural System MCP"
+              },
+              "version": {
+                "type": "string",
+                "example": "1.0.0"
+              },
+              "description": {
+                "type": "string"
+              },
+              "stats": {
+                "type": "object",
+                "properties": {
+                  "total_people": {
+                    "type": "integer"
+                  },
+                  "total_projects": {
+                    "type": "integer"
+                  },
+                  "active_projects": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Person": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tldr": {
+            "type": "string",
+            "description": "Brief description"
+          },
+          "relation_type": {
+            "type": "string",
+            "enum": ["family", "work", "friends", "professional"]
+          },
+          "last_contact": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes_count": {
+            "type": "integer"
+          },
+          "relationship_health": {
+            "type": "string",
+            "enum": ["active", "stale", "needs_attention"]
+          }
+        }
+      },
+      "PeopleListResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "people": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Person"
+                }
+              },
+              "total_count": {
+                "type": "integer"
+              },
+              "pagination": {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": "integer"
+                  },
+                  "offset": {
+                    "type": "integer"
+                  },
+                  "has_more": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "PeopleSearchResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "object",
+                "properties": {
+                  "q": {
+                    "type": "string"
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "fuzzy": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "matches": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/Person"
+                    },
+                    "score": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  }
+                }
+              },
+              "total_count": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "PersonDetailResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "person": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Person"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "notes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "content": {
+                              "type": "string"
+                            },
+                            "created_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          }
+                        }
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "PeopleAnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "analytics": {
+                "type": "object",
+                "properties": {
+                  "total_people": {
+                    "type": "integer"
+                  },
+                  "relationships": {
+                    "type": "object",
+                    "properties": {
+                      "family": {
+                        "type": "integer"
+                      },
+                      "work": {
+                        "type": "integer"
+                      },
+                      "friends": {
+                        "type": "integer"
+                      },
+                      "professional": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                }
+              },
+              "insights": {
+                "type": "object",
+                "properties": {
+                  "suggested_contacts": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Person"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "completed", "on_hold", "cancelled"]
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "progress": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "health_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      },
+      "ProjectsListResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "projects": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              },
+              "total_count": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "ActiveProjectsResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "summary": {
+                "type": "object",
+                "properties": {
+                  "total_active_projects": {
+                    "type": "integer"
+                  },
+                  "avg_health_score": {
+                    "type": "number"
+                  },
+                  "total_progress": {
+                    "type": "number"
+                  }
+                }
+              },
+              "projects": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ProjectSearchResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "object",
+                "properties": {
+                  "q": {
+                    "type": "string"
+                  }
+                }
+              },
+              "matches": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/Project"
+                    },
+                    "score": {
+                      "type": "number"
+                    }
+                  }
+                }
+              },
+              "total_count": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "ProjectTasksResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "summary": {
+                "type": "object",
+                "properties": {
+                  "total_tasks": {
+                    "type": "integer"
+                  },
+                  "high_priority_tasks": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "tasks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "priority": {
+                      "type": "integer"
+                    },
+                    "project_id": {
+                      "type": "string"
+                    },
+                    "project_name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ProjectAnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "overview": {
+                "type": "object",
+                "properties": {
+                  "total_projects": {
+                    "type": "integer"
+                  },
+                  "avg_completion_rate": {
+                    "type": "number"
+                  },
+                  "avg_health_score": {
+                    "type": "number"
+                  }
+                }
+              },
+              "insights": {
+                "type": "object",
+                "properties": {
+                  "blockers_analysis": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "project_id": {
+                          "type": "string"
+                        },
+                        "blocker_type": {
+                          "type": "string"
+                        },
+                        "severity": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad Request - Invalid parameters",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized - Invalid or missing token",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not Found - Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Too Many Requests - Rate limit exceeded",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "JWT token authentication"
+    },
+    {
+      "name": "System",
+      "description": "System information and health checks"
+    },
+    {
+      "name": "People",
+      "description": "Personal network and relationship management"
+    },
+    {
+      "name": "Projects",
+      "description": "Project portfolio and task management"
+    }
+  ]
+} 

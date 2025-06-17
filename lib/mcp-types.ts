@@ -239,6 +239,12 @@ export interface MCPProject extends Project {
   active_sprints: number;
   sprints?: MCPSprint[];
   completion_rate?: number;
+  health_score?: number;
+  project_health?: 'healthy' | 'needs_attention' | 'stale' | 'blocked';
+  days_since_activity?: number;
+  blocked_tasks_count?: number;
+  next_suggested_actions?: string[];
+  last_activity?: string;
 }
 
 export interface MCPSprint extends Sprint {
@@ -256,12 +262,198 @@ export interface MCPProjectsQuery {
   include_tasks?: boolean;
   limit?: number;
   search?: string;
+  health?: 'healthy' | 'needs_attention' | 'stale' | 'blocked';
+  last_activity?: string;
+  completion_rate_min?: number;
+  completion_rate_max?: number;
+  has_active_sprints?: boolean;
+  priority_level?: 'low' | 'medium' | 'high' | 'urgent';
+  sort?: 'newest' | 'activity' | 'completion' | 'urgency' | 'name' | 'health';
+  include_blockers?: boolean;
+  team_member?: string;
 }
 
 export interface MCPProjectsResponse {
   projects: MCPProject[];
   total_count: number;
   filters_applied: MCPProjectsQuery;
+  performance?: {
+    query_time_ms: number;
+    health_calculated: boolean;
+  };
+}
+
+// ====== Active Projects Types ======
+export interface MCPActiveProject {
+  project: MCPProject;
+  active_sprints: MCPSprint[];
+  urgent_tasks: Array<Task & {
+    sprint_name: string;
+    days_pending: number;
+  }>;
+  blockers: Array<{
+    task_id: string;
+    task_title: string;
+    blocker_reason: string;
+    suggested_action: string;
+    priority: number;
+  }>;
+  health_score: number;
+  needs_attention: boolean;
+  next_actions: string[];
+}
+
+export interface MCPActiveProjectsResponse {
+  active_projects: MCPActiveProject[];
+  summary: {
+    total_active_projects: number;
+    total_active_sprints: number;
+    total_pending_tasks: number;
+    urgent_tasks_count: number;
+    blocked_tasks_count: number;
+    average_health_score: number;
+  };
+  insights: string[];
+}
+
+// ====== Projects Search Types ======
+export interface MCPProjectsSearchQuery {
+  q: string;
+  fields?: string[];
+  fuzzy?: boolean;
+  include_sprints?: boolean;
+  include_tasks?: boolean;
+  include_blockers?: boolean;
+  limit?: number;
+  min_score?: number;
+}
+
+export interface MCPProjectSearchResult extends MCPProject {
+  search_score: number;
+  highlights: Array<{
+    field: string;
+    snippet: string;
+    score: number;
+  }>;
+  matched_sprints?: Array<MCPSprint & {
+    search_score: number;
+    highlights: Array<{
+      field: string;
+      snippet: string;
+    }>;
+  }>;
+}
+
+export interface MCPProjectsSearchResponse {
+  results: MCPProjectSearchResult[];
+  total_count: number;
+  query: MCPProjectsSearchQuery;
+  search_time_ms: number;
+}
+
+// ====== Cross-Project Tasks Types ======
+export interface MCPTasksQuery {
+  status?: 'pending' | 'in_progress' | 'completed';
+  priority_min?: number;
+  priority_max?: number;
+  assigned_to?: string;
+  due_date?: string;
+  project_id?: string;
+  sprint_id?: string;
+  blocked?: boolean;
+  days_pending_min?: number;
+  sort?: 'priority' | 'created' | 'due_date' | 'project' | 'urgency';
+  limit?: number;
+}
+
+export interface MCPTaskWithContext extends Task {
+  project_name: string;
+  project_id: string;
+  sprint_name: string;
+  sprint_id: string;
+  context_path: string;
+  is_blocked: boolean;
+  blocker_reason?: string;
+  days_pending: number;
+  urgency_score: number;
+  estimated_effort?: string;
+  suggested_actions?: string[];
+}
+
+export interface MCPTasksResponse {
+  tasks: MCPTaskWithContext[];
+  summary: {
+    total_tasks: number;
+    by_status: Record<string, number>;
+    by_priority: Record<string, number>;
+    by_project: Record<string, number>;
+    blocked_tasks: number;
+    urgent_tasks: number;
+  };
+  performance?: {
+    query_time_ms: number;
+  };
+}
+
+// ====== Projects Analytics Types ======
+export interface MCPProjectsAnalytics {
+  overview: {
+    total_projects: number;
+    active_projects: number;
+    completed_projects: number;
+    archived_projects: number;
+    total_sprints: number;
+    active_sprints: number;
+    total_tasks: number;
+    overall_completion_rate: number;
+  };
+  
+  productivity: {
+    tasks_completed_last_7d: number;
+    tasks_completed_last_30d: number;
+    avg_tasks_per_week: number;
+    completion_velocity: Array<{
+      week: string;
+      completed_tasks: number;
+      completion_rate: number;
+    }>;
+  };
+  
+  projects_health: Array<{
+    project_name: string;
+    project_id: string;
+    health_score: number;
+    status: 'healthy' | 'needs_attention' | 'stale' | 'blocked';
+    last_activity: string;
+    completion_rate: number;
+    active_sprints: number;
+    pending_tasks: number;
+    blocked_tasks: number;
+    suggested_actions: string[];
+  }>;
+  
+  insights: {
+    most_productive_project: string;
+    longest_stale_project: string;
+    highest_priority_tasks: Array<{
+      task_title: string;
+      project_name: string;
+      priority: number;
+      days_pending: number;
+    }>;
+    completion_trends: {
+      trend: 'improving' | 'declining' | 'stable';
+      change_percentage: number;
+      period: string;
+    };
+    recommendations: string[];
+  };
+}
+
+export interface MCPProjectsAnalyticsResponse {
+  analytics: MCPProjectsAnalytics;
+  generated_at: string;
+  query_time_ms: number;
 }
 
 // ====== Error Codes ======

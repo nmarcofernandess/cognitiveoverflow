@@ -6,7 +6,13 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint --fix"
+    "lint": "eslint --fix",
+    "test": "mocha tests/mcp-integration.test.js --timeout 30000",
+    "test:integration": "mocha tests/mcp-integration.test.js --timeout 60000 --reporter spec",
+    "test:performance": "node tests/performance-benchmark.js",
+    "benchmark": "npm run test:performance",
+    "test:all": "npm run test && npm run test:performance",
+    "profile": "node --inspect tests/performance-benchmark.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -50,8 +56,11 @@
     "@typescript-eslint/eslint-plugin": "8.31.1",
     "@typescript-eslint/parser": "8.31.1",
     "autoprefixer": "10.4.21",
+    "axios": "^1.10.0",
+    "chai": "^4.5.0",
     "eslint": "9.25.1",
     "eslint-config-next": "15.3.1",
+    "mocha": "^10.8.2",
     "postcss": "8.5.3",
     "prettier": "3.5.3",
     "tailwind-variants": "0.3.0",
