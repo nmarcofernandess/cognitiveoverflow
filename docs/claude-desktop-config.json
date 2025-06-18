@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "neural-system": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "-y",
+        "https://cognitiveoverflow.vercel.app/api/mcp-server?token=neural_access_2024"
+      ]
+    },
+    "neural-system-local": {
+      "command": "npx", 
+      "args": [
+        "mcp-remote",
+        "-y",
+        "http://localhost:3000/api/mcp-server?token=neural_access_2024"
+      ]
+    }
+  }
+} 
