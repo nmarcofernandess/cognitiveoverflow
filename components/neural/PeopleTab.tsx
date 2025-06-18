@@ -8,10 +8,11 @@ import { Textarea } from "@heroui/input";
 import { Chip } from "@heroui/chip";
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from '../../lib/supabase';
+import { detailQueries, supabase } from '../../lib/supabase';
 import { useNeuralContext } from './context/NeuralContext';
 import { CollapsibleForm, CollapsibleSection } from './CollapsibleForm';
 import { Breadcrumb } from './Breadcrumb';
+import { Badge } from "@heroui/badge";
 
 interface Person {
   id: string;
@@ -22,6 +23,7 @@ interface Person {
   updated_at?: string;
   notes_count: number;
   notes?: PersonNote[];
+  is_primary_user: boolean;
 }
 
 interface PersonNote {
@@ -67,39 +69,11 @@ export default function PeopleTab({ onTabChange }: { onTabChange?: (tabId: strin
   const loadPeople = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('people')
-        .select(`
-          id,
-          name,
-          relation,
-          tldr,
-          created_at,
-          updated_at
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Erro ao buscar people:', error);
-        setPeople([]);
-      } else {
-        // Get notes count for each person
-        const peopleWithCounts = await Promise.all(
-          (data || []).map(async (person) => {
-            const { count } = await supabase
-              .from('person_notes')
-              .select('*', { count: 'exact', head: true })
-              .eq('person_id', person.id);
-            
-            return {
-              ...person,
-              notes_count: count || 0,
-              notes: []
-            };
-          })
-        );
-        setPeople(peopleWithCounts);
-      }
+      const peopleWithCounts = await detailQueries.getPeopleList();
+      setPeople(peopleWithCounts.map(person => ({
+        ...person,
+        notes: []
+      })));
     } catch (error) {
       console.error('Erro ao carregar people:', error);
       setPeople([]);
@@ -170,6 +144,13 @@ export default function PeopleTab({ onTabChange }: { onTabChange?: (tabId: strin
   };
 
   const handleDeletePerson = async (id: string) => {
+    // Proteger contra deleção do usuário principal
+    const personToDelete = people.find(p => p.id === id);
+    if (personToDelete?.is_primary_user) {
+      alert('Não é possível deletar o usuário principal do sistema.');
+      return;
+    }
+
     if (!confirm('Tem certeza que deseja deletar esta pessoa? Todas as notes também serão deletadas. Esta ação não pode ser desfeita.')) {
       return;
     }
@@ -190,6 +171,7 @@ export default function PeopleTab({ onTabChange }: { onTabChange?: (tabId: strin
       if (selectedPerson?.id === id) {
         setSelectedPerson(null);
       }
+      notifyPersonChange(); // 🔥 Notifica mudança
     } catch (error) {
       console.error('Erro ao deletar pessoa:', error);
       alert('Erro ao deletar pessoa. Tente novamente.');
@@ -221,6 +203,7 @@ export default function PeopleTab({ onTabChange }: { onTabChange?: (tabId: strin
           p.id === updatedPerson.id ? updatedPerson : p
         ));
         setSelectedPerson(updatedPerson);
+        notifyPersonChange(); // 🔥 Notifica mudança
       }}
       onDeletePerson={handleDeletePerson}
     />
@@ -334,6 +317,11 @@ export default function PeopleTab({ onTabChange }: { onTabChange?: (tabId: strin
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-xl font-semibold text-slate-100 font-mono">{person.name}</h3>
+                      {person.is_primary_user && (
+                        <Badge color="warning" variant="flat" className="font-mono text-xs">
+                          PRIMARY USER
+                        </Badge>
+                      )}
                       <span className="text-sm text-blue-400 capitalize font-mono">{person.relation}</span>
                     </div>
                     <p className="text-slate-300 font-mono">{person.tldr || 'Sem descrição'}</p>
@@ -343,17 +331,19 @@ export default function PeopleTab({ onTabChange }: { onTabChange?: (tabId: strin
                       <span>{person.notes_count || 0} notes</span>
                       <Icon icon="lucide:message-circle" width={16} height={16} />
                     </div>
-                                         <Button
-                       size="sm"
-                       variant="flat"
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         handleDeletePerson(person.id);
-                       }}
-                       className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                     >
-                       <Icon icon="lucide:trash-2" width={16} height={16} />
-                     </Button>
+                    {!person.is_primary_user && (
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeletePerson(person.id);
+                        }}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                      >
+                        <Icon icon="lucide:trash-2" width={16} height={16} />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardBody>
@@ -387,8 +377,10 @@ function PersonDetail({
   onUpdate: (person: Person) => void;
   onDeletePerson: (id: string) => void;
 }) {
+  const [editingName, setEditingName] = useState(false);
   const [editingTldr, setEditingTldr] = useState(false);
   const [editingRelation, setEditingRelation] = useState(false);
+  const [tempName, setTempName] = useState(person.name);
   const [tempTldr, setTempTldr] = useState(person.tldr || '');
   const [tempRelation, setTempRelation] = useState(person.relation);
   const [newNote, setNewNote] = useState({ title: '', content: '', tags: '' });
@@ -400,6 +392,13 @@ function PersonDetail({
   // Edit states
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [editNoteData, setEditNoteData] = useState({ title: '', content: '', tags: '' });
+
+  // Update states when person changes
+  useEffect(() => {
+    setTempName(person.name);
+    setTempTldr(person.tldr || '');
+    setTempRelation(person.relation);
+  }, [person.name, person.tldr, person.relation]);
 
   const updatePerson = async (updates: any) => {
     try {
@@ -422,6 +421,24 @@ function PersonDetail({
     } catch (error) {
       console.error('Erro ao atualizar pessoa:', error);
       return false;
+    }
+  };
+
+  const handleSaveName = async () => {
+    if (tempName.trim() === person.name) {
+      setEditingName(false);
+      return;
+    }
+
+    if (!tempName.trim()) {
+      setTempName(person.name);
+      setEditingName(false);
+      return;
+    }
+
+    const success = await updatePerson({ name: tempName.trim() });
+    if (success) {
+      setEditingName(false);
     }
   };
 
@@ -453,24 +470,31 @@ function PersonDetail({
     if (!newNote.title.trim()) return;
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('person_notes')
         .insert([{
           person_id: person.id,
           title: newNote.title,
           content: newNote.content,
           tags: newNote.tags.split(',').map(t => t.trim()).filter(Boolean)
-        }]);
+        }])
+        .select()
+        .single();
 
       if (error) {
         console.error('Erro ao criar nota:', error);
         return;
       }
 
+      // Update local state instead of reload
+      const updatedPerson = {
+        ...person,
+        notes: [data, ...(person.notes || [])]
+      };
+      onUpdate(updatedPerson);
+
       setNewNote({ title: '', content: '', tags: '' });
       setShowNotesForm(false);
-      // Reload person detail
-      window.location.reload();
     } catch (error) {
       console.error('Erro ao criar nota:', error);
     }
@@ -504,9 +528,25 @@ function PersonDetail({
         return;
       }
 
+      // Update local state instead of reload
+      const updatedNotes = (person.notes || []).map(note => 
+        note.id === editingNote 
+          ? { 
+              ...note, 
+              title: editNoteData.title,
+              content: editNoteData.content,
+              tags: editNoteData.tags.split(',').map(t => t.trim()).filter(Boolean)
+            }
+          : note
+      );
+      
+      const updatedPerson = {
+        ...person,
+        notes: updatedNotes
+      };
+      onUpdate(updatedPerson);
+
       setEditingNote(null);
-      // Reload person detail
-      window.location.reload();
     } catch (error) {
       console.error('Erro ao atualizar nota:', error);
     }
@@ -531,8 +571,13 @@ function PersonDetail({
         return;
       }
 
-      // Reload person detail
-      window.location.reload();
+      // Update local state instead of reload
+      const updatedNotes = (person.notes || []).filter(note => note.id !== noteId);
+      const updatedPerson = {
+        ...person,
+        notes: updatedNotes
+      };
+      onUpdate(updatedPerson);
     } catch (error) {
       console.error('Erro ao deletar nota:', error);
     }
@@ -559,22 +604,53 @@ function PersonDetail({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <motion.h2 
-            className="text-4xl font-bold text-blue-400 font-mono"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            👤 {person.name}
-          </motion.h2>
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                onBlur={handleSaveName}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveName();
+                  }
+                  if (e.key === 'Escape') {
+                    setTempName(person.name);
+                    setEditingName(false);
+                  }
+                }}
+                autoFocus
+                className="w-80"
+                classNames={{
+                  inputWrapper: "bg-slate-800/60 border-slate-600/60",
+                  input: "text-blue-400 font-mono text-3xl font-bold"
+                }}
+              />
+            </div>
+          ) : (
+            <motion.h2 
+              className="text-4xl font-bold text-blue-400 font-mono cursor-pointer hover:text-blue-300 transition-colors"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              onClick={() => setEditingName(true)}
+              title="Click to edit person name"
+            >
+              👤 {person.name}
+            </motion.h2>
+          )}
         </div>
         
-        <Button
-          onClick={() => onDeletePerson(person.id)}
-          className="bg-red-900/20 border border-red-500/30 text-red-400 hover:bg-red-900/30 font-mono"
-        >
-          <Icon icon="lucide:trash-2" width={16} height={16} />
-          Delete Person
-        </Button>
+        <div className="flex gap-2">
+          {!person.is_primary_user && (
+            <Button
+              onClick={() => onDeletePerson(person.id)}
+              className="bg-red-900/20 border border-red-500/30 text-red-400 hover:bg-red-900/30 font-mono"
+            >
+              <Icon icon="lucide:trash-2" width={16} height={16} />
+              Delete Person
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Relation */}

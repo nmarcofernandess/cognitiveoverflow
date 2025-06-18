@@ -10,6 +10,7 @@ import MatrixLogoutButton from '../../components/matrix/MatrixLogoutButton';
 
 // Neural System Components  
 import { OverviewTab, PeopleTab, ProjectsTab } from '../../components/neural';
+import CustomInstructionsTab from '../../components/neural/CustomInstructionsTab';
 import { NeuralProvider } from '../../components/neural/context/NeuralContext';
 
 export default function NeuralSystemPage() {
@@ -48,6 +49,13 @@ export default function NeuralSystemPage() {
       icon: 'lucide:rocket',
       color: 'text-purple-400',
       description: 'Sprints + Tasks + Project Notes'
+    },
+    { 
+      id: 'custom-instructions', 
+      label: 'Custom Instructions', 
+      icon: 'lucide:bot',
+      color: 'text-orange-400',
+      description: 'Comportamento IA + Instruções MCP + Memória'
     }
   ];
 
@@ -127,9 +135,10 @@ export default function NeuralSystemPage() {
                 transition={{ duration: 0.3 }}
                 className="min-h-[600px]"
               >
-                {activeTab === 'overview' && <OverviewTab />}
-                {activeTab === 'people' && <PeopleTab />}
-                {activeTab === 'projects' && <ProjectsTab />}
+                {activeTab === 'overview' && <OverviewTab onTabChange={handleTabChange} />}
+                {activeTab === 'people' && <PeopleTab onTabChange={handleTabChange} />}
+                {activeTab === 'projects' && <ProjectsTab onTabChange={handleTabChange} />}
+                {activeTab === 'custom-instructions' && <CustomInstructionsTab onTabChange={handleTabChange} />}
               </motion.div>
             </AnimatePresence>
           </NeuralProvider>

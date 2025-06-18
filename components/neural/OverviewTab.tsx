@@ -3,45 +3,38 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
+import { Chip } from "@heroui/chip";
 import { Icon } from '@iconify/react';
 import { motion } from "framer-motion";
-import { supabase } from '../../lib/supabase';
+import { overviewQueries, customQueries, PersonSummary, ProjectSummary, OverviewStats, CustomInstructions, Memory } from '../../lib/supabase';
 import { useNeuralContext } from './context/NeuralContext';
+import { supabase } from '../../lib/supabase';
 
 interface ManifestData {
-  user: {
-    name: string;
+  ai_config: {
+    primary_user: string;
     persona: string;
+    memory_count: number;
   };
-  people: Array<{
-    name: string;
-    relation: string;
-    tldr?: string;
-  }>;
-  projects: Array<{
-    name: string;
-    tldr?: string;
-    sprint_count: number;
-  }>;
+  mcp_instructions: string;
+  people: PersonSummary[];
+  projects: ProjectSummary[];
+  stats: OverviewStats;
   last_sync: string;
+  marcoData?: { name: string; tldr?: string; };
+  memorySummary: Pick<Memory, 'id' | 'title' | 'tags' | 'created_at'>[];
 }
 
 export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: string) => void }) {
   const { stats: contextStats } = useNeuralContext();
   const [manifest, setManifest] = useState<ManifestData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    people: 0,
-    projects: 0,
-    sprints: 0,
-    tasks: 0
-  });
 
   useEffect(() => {
     loadManifest();
   }, []);
 
-  // ✅ Reage às mudanças do contexto
+  // 🔥 Reagir às mudanças do contexto
   useEffect(() => {
     if (contextStats.last_updated) {
       loadManifest();
@@ -51,61 +44,54 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
   const loadManifest = async () => {
     setLoading(true);
     try {
-      // Get people
-      const { data: people } = await supabase
-        .from('people')
-        .select('name, relation, tldr')
-        .limit(10);
-
-      // Get projects with sprint counts
-      const { data: projects } = await supabase
-        .from('projects')
-        .select(`
-          name,
-          tldr,
-          sprints(count)
-        `);
-
-      // Get total stats
-      const [peopleCount, projectsCount, sprintsCount, tasksCount] = await Promise.all([
-        supabase.from('people').select('*', { count: 'exact', head: true }),
-        supabase.from('projects').select('*', { count: 'exact', head: true }),
-        supabase.from('sprints').select('*', { count: 'exact', head: true }),
-        supabase.from('tasks').select('*', { count: 'exact', head: true })
+      // 🎯 Use optimized queries for Overview (no tldr)
+      const [peopleData, projectsData, statsData, customInstructions, memoryCount, memorySummary] = await Promise.all([
+        overviewQueries.getPeopleSummary(10),
+        overviewQueries.getProjectsSummary(10), 
+        overviewQueries.getOverviewStats(),
+        customQueries.getCustomInstructions(),
+        customQueries.getMemoryCount(),
+        customQueries.getMemorySummary(10)
       ]);
 
-      setStats({
-        people: peopleCount.count || 0,
-        projects: projectsCount.count || 0,
-        sprints: sprintsCount.count || 0,
-        tasks: tasksCount.count || 0
-      });
+      // 🔥 Buscar Marco especificamente (primary user)
+      const { data: marcoData } = await supabase
+        .from('people')
+        .select('name, tldr')
+        .eq('is_primary_user', true)
+        .single();
 
       const manifest: ManifestData = {
-        user: {
-          name: "Marco Fernandes",
-          persona: "Rebelde intelectual, CEO/fundador DietFlow"
+        ai_config: {
+          primary_user: marcoData?.name || "Marco Fernandes",
+          persona: customInstructions?.behavior_description || "CEO DietFlow, rebelde intelectual",
+          memory_count: memoryCount
         },
-        people: people || [],
-        projects: (projects || []).map(project => ({
-          ...project,
-          sprint_count: project.sprints?.[0]?.count || 0
-        })),
-        last_sync: new Date().toISOString()
+        mcp_instructions: customInstructions?.mcp_context_instructions || "Sistema de conhecimento pessoal Neural",
+        people: peopleData,
+        projects: projectsData,
+        stats: statsData,
+        last_sync: new Date().toISOString(),
+        marcoData: marcoData || undefined,
+        memorySummary: memorySummary
       };
 
       setManifest(manifest);
     } catch (error) {
       console.error('Erro ao carregar manifesto:', error);
-      setManifest({
-        user: {
-          name: "Marco Fernandes",
-          persona: "Rebelde intelectual, CEO/fundador DietFlow"
-        },
-        people: [],
-        projects: [],
-        last_sync: new Date().toISOString()
-      });
+              setManifest({
+          ai_config: {
+            primary_user: "Marco Fernandes",
+            persona: "Rebelde intelectual, CEO/fundador DietFlow",
+            memory_count: 0
+          },
+          mcp_instructions: "Sistema de conhecimento pessoal Neural",
+          people: [],
+          projects: [],
+          stats: { people: 0, projects: 0, sprints: 0, tasks: 0 },
+          last_sync: new Date().toISOString(),
+          memorySummary: []
+        });
     } finally {
       setLoading(false);
     }
@@ -124,72 +110,7 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
     URL.revokeObjectURL(url);
   };
 
-  // 🔥 Claude.ai Integration State
-  const [claudeToken, setClaudeToken] = useState<string>('');
-  const [claudeGenerating, setClaudeGenerating] = useState(false);
-  const [claudeError, setClaudeError] = useState<string>('');
-  const [autoCopied, setAutoCopied] = useState(false);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
-
-  const generateClaudeLink = async () => {
-    setClaudeGenerating(true);
-    setClaudeError('');
-    setAutoCopied(false);
-    
-    try {
-      // Generate MCP Server URL - no authentication needed for discovery
-      const mcpServerUrl = `${window.location.origin}/api/mcp-server`;
-      setClaudeToken(mcpServerUrl);
-      
-      // Try to copy to clipboard (optional)
-      try {
-        await navigator.clipboard.writeText(mcpServerUrl);
-        setAutoCopied(true);
-      } catch (clipboardError) {
-        console.log('Auto-copy failed, manual copy available');
-        setAutoCopied(false);
-      }
-      
-    } catch (error) {
-      setClaudeError('Erro ao gerar URL. Tente novamente.');
-      console.error('Error generating MCP Server URL:', error);
-    } finally {
-      setClaudeGenerating(false);
-    }
-  };
-
-  const copyClaudeLink = async () => {
-    if (claudeToken) {
-      try {
-        await navigator.clipboard.writeText(claudeToken);
-        setAutoCopied(true);
-        setShowCopySuccess(true);
-        
-        // Reset feedback after 2 seconds
-        setTimeout(() => {
-          setShowCopySuccess(false);
-        }, 2000);
-        
-      } catch (error) {
-        // Fallback: Seleção manual
-        const input = document.querySelector('input[readonly]') as HTMLInputElement;
-        if (input) {
-          input.select();
-          input.setSelectionRange(0, 99999); // Para mobile
-          try {
-            document.execCommand('copy');
-            setAutoCopied(true);
-            setShowCopySuccess(true);
-            setTimeout(() => {
-              setShowCopySuccess(false);
-            }, 2000);
-          } catch (e) {
-            console.log('Clipboard not available, manual copy required');
-          }
-        }
-      }
-    }
-  };
 
   if (loading) {
     return (
@@ -227,13 +148,31 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
           🧠 NEURAL OVERVIEW
         </motion.h2>
         
-        <Button
-          onClick={exportManifest}
-          className="bg-cyan-600/20 border border-cyan-400/30 text-cyan-400 hover:bg-cyan-600/30 font-mono"
-        >
-          <Icon icon="lucide:download" width={16} height={16} />
-          Export Manifest
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => {
+              const mcpUrl = "https://cognitiveoverflow.vercel.app/api/mcp-server?token=neural_access_2024";
+              navigator.clipboard.writeText(mcpUrl);
+              setShowCopySuccess(true);
+              setTimeout(() => setShowCopySuccess(false), 2000);
+            }}
+            className={`${showCopySuccess 
+              ? 'bg-emerald-600/20 border border-emerald-400/30 text-emerald-400' 
+              : 'bg-indigo-600/20 border border-indigo-400/30 text-indigo-400 hover:bg-indigo-600/30'
+            } font-mono`}
+          >
+            <Icon icon={showCopySuccess ? "lucide:check" : "lucide:link"} width={16} height={16} />
+            {showCopySuccess ? 'Copied!' : 'Copy MCP URL'}
+          </Button>
+          
+          <Button
+            onClick={exportManifest}
+            className="bg-cyan-600/20 border border-cyan-400/30 text-cyan-400 hover:bg-cyan-600/30 font-mono"
+          >
+            <Icon icon="lucide:download" width={16} height={16} />
+            Export Manifest
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats */}
@@ -243,265 +182,266 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-emerald-400/40 transition-all">
-          <CardBody className="text-center p-6">
-            <div className="text-3xl font-bold text-blue-400 font-mono">{stats.people}</div>
-            <div className="text-sm text-slate-400 font-mono">People</div>
+        <Card className="bg-gray-900/50 border border-gray-700/50">
+          <CardBody className="text-center py-6">
+            <Icon icon="lucide:users" width={32} height={32} className="mx-auto mb-2 text-blue-400" />
+            <p className="text-2xl font-bold text-blue-400 font-mono">{manifest.stats.people}</p>
+            <p className="text-gray-400 text-sm font-mono">PEOPLE</p>
           </CardBody>
         </Card>
         
-        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-purple-400/40 transition-all">
-          <CardBody className="text-center p-6">
-            <div className="text-3xl font-bold text-purple-400 font-mono">{stats.projects}</div>
-            <div className="text-sm text-slate-400 font-mono">Projects</div>
+        <Card className="bg-gray-900/50 border border-gray-700/50">
+          <CardBody className="text-center py-6">
+            <Icon icon="lucide:folder" width={32} height={32} className="mx-auto mb-2 text-green-400" />
+            <p className="text-2xl font-bold text-green-400 font-mono">{manifest.stats.projects}</p>
+            <p className="text-gray-400 text-sm font-mono">PROJECTS</p>
           </CardBody>
         </Card>
         
-        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-green-400/40 transition-all">
-          <CardBody className="text-center p-6">
-            <div className="text-3xl font-bold text-green-400 font-mono">{stats.sprints}</div>
-            <div className="text-sm text-slate-400 font-mono">Sprints</div>
+        <Card className="bg-gray-900/50 border border-gray-700/50">
+          <CardBody className="text-center py-6">
+            <Icon icon="lucide:zap" width={32} height={32} className="mx-auto mb-2 text-yellow-400" />
+            <p className="text-2xl font-bold text-yellow-400 font-mono">{manifest.stats.sprints}</p>
+            <p className="text-gray-400 text-sm font-mono">SPRINTS</p>
           </CardBody>
         </Card>
         
-        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-yellow-400/40 transition-all">
-          <CardBody className="text-center p-6">
-            <div className="text-3xl font-bold text-yellow-400 font-mono">{stats.tasks}</div>
-            <div className="text-sm text-slate-400 font-mono">Tasks</div>
+        <Card className="bg-gray-900/50 border border-gray-700/50">
+          <CardBody className="text-center py-6">
+            <Icon icon="lucide:check-square" width={32} height={32} className="mx-auto mb-2 text-purple-400" />
+            <p className="text-2xl font-bold text-purple-400 font-mono">{manifest.stats.tasks}</p>
+            <p className="text-gray-400 text-sm font-mono">TASKS</p>
           </CardBody>
         </Card>
       </motion.div>
 
-      {/* Claude.ai Integration */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Card className="w-full bg-gradient-to-r from-indigo-900/40 to-purple-900/40 backdrop-blur-sm border border-indigo-400/30">
-          <CardBody className="p-8">
-            <h3 className="text-2xl font-bold mb-6 text-indigo-300 font-mono flex items-center gap-3">
-              <Icon icon="lucide:bot" width={24} height={24} />
-              Claude.ai REST API Integration
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-slate-300 font-mono text-sm mb-4">
-                  ✅ MCP Server 2025-03-26 compliant - JSON-RPC 2.0 + Full CRUD Tools
-                </p>
-                <div className="space-y-3">
-                  <Button
-                    onClick={generateClaudeLink}
-                    isLoading={claudeGenerating}
-                    className="bg-indigo-600/80 border border-indigo-400/50 text-white hover:bg-indigo-600/90 font-mono w-full"
-                  >
-                    {claudeGenerating ? (
-                      <>
-                        <Icon icon="lucide:loader-2" width={16} height={16} className="animate-spin" />
-                        Gerando URL...
-                      </>
-                    ) : (
-                      <>
-                        <Icon icon="lucide:zap" width={16} height={16} />
-                        Gerar MCP Server URL
-                      </>
-                    )}
-                  </Button>
-                  
-                  {claudeError && (
-                    <p className="text-red-400 text-xs font-mono">{claudeError}</p>
-                  )}
-                </div>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* People Section */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="bg-gray-900/50 border border-gray-700/50 h-full">
+            <CardBody className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-blue-400 font-mono flex items-center gap-2">
+                  <Icon icon="lucide:users" width={20} height={20} />
+                  PEOPLE NETWORK
+                </h3>
+                <Button
+                  size="sm"
+                  onClick={() => onTabChange?.('people')}
+                  className="bg-blue-600/20 border border-blue-400/30 text-blue-400 hover:bg-blue-600/30 font-mono"
+                >
+                  <Icon icon="lucide:arrow-right" width={14} height={14} />
+                  View All
+                </Button>
               </div>
               
-              <div>
-                {claudeToken ? (
-                  <div className="space-y-3">
-                                         <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
-                              <p className="text-emerald-400 font-mono text-xs mb-2">
-         ✅ MCP Server URL gerada{autoCopied ? ' e copiada!' : '!'}
-       </p>
-                       {!autoCopied && (
-                         <p className="text-yellow-400 font-mono text-xs mb-2">
-                           ⚠️ Use o botão copy para copiar manualmente
-                         </p>
-                       )}
-                      <div className="flex items-center gap-2">
-                        <input
-                          value={claudeToken}
-                          readOnly
-                          className="bg-slate-800/60 border border-slate-600/40 text-slate-300 font-mono text-xs px-3 py-2 rounded flex-1 focus:outline-none focus:border-indigo-400/60"
-                        />
-                                                 <Button
-                           onClick={copyClaudeLink}
-                           size="sm"
-                           className={`${showCopySuccess 
-                             ? 'bg-emerald-600/60 border-emerald-400/40 text-emerald-300' 
-                             : 'bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:bg-slate-600/60'
-                           }`}
-                         >
-                           <Icon 
-                             icon={showCopySuccess ? "lucide:check" : "lucide:copy"} 
-                             width={14} 
-                             height={14} 
-                           />
-                         </Button>
+              <div className="space-y-3">
+                {manifest.people.length > 0 ? (
+                  manifest.people.map((person, index) => (
+                    <motion.div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700/30"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 + index * 0.05 }}
+                    >
+                      <div>
+                        <p className="font-semibold text-white font-mono">{person.name}</p>
+                        <p className="text-sm text-gray-400 font-mono">{person.relation}</p>
                       </div>
-                    </div>
-                    <div className="text-xs text-slate-400 font-mono space-y-1">
-                      <p>• Cole no Claude Desktop: Settings → Model Context Protocol</p>
-                      <p>• MCP Server URL funcional e testado ✅</p>
-                      <p>• 16 Tools: People, Projects, Sprints, Tasks + Resources + Prompts</p>
-                    </div>
-                  </div>
+                    </motion.div>
+                  ))
                 ) : (
-                  <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
-                    <div className="text-slate-400 font-mono text-sm space-y-2">
-                      <p className="flex items-center gap-2">
-                        <Icon icon="lucide:info" width={16} height={16} />
-                        Como usar:
-                      </p>
-                      <div className="text-xs space-y-1 pl-5">
-                        <p>1. Clique em "Gerar MCP Server URL"</p>
-                        <p>2. URL será copiada automaticamente</p>
-                        <p>3. Cole no Claude Desktop → Settings → MCP</p>
-                        <p>4. Neural System conectado ao Claude! 🧠</p>
+                  <p className="text-gray-500 text-center py-6 font-mono">No people found</p>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+        </motion.div>
+
+        {/* Projects Section */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="bg-gray-900/50 border border-gray-700/50 h-full">
+            <CardBody className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-green-400 font-mono flex items-center gap-2">
+                  <Icon icon="lucide:folder" width={20} height={20} />
+                  ACTIVE PROJECTS
+                </h3>
+                <Button
+                  size="sm"
+                  onClick={() => onTabChange?.('projects')}
+                  className="bg-green-600/20 border border-green-400/30 text-green-400 hover:bg-green-600/30 font-mono"
+                >
+                  <Icon icon="lucide:arrow-right" width={14} height={14} />
+                  View All
+                </Button>
+              </div>
+              
+              <div className="space-y-3">
+                {manifest.projects.length > 0 ? (
+                  manifest.projects.map((project, index) => (
+                    <motion.div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700/30"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 + index * 0.05 }}
+                    >
+                      <div>
+                        <p className="font-semibold text-white font-mono">{project.name}</p>
+                        <p className="text-sm text-gray-400 font-mono">{project.sprint_count} sprints</p>
                       </div>
-                    </div>
-                  </div>
+                    </motion.div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-6 font-mono">No projects found</p>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Custom Instructions & Memory System */}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        {/* Custom Instructions Section */}
+        <Card className="bg-gray-900/50 border border-gray-700/50">
+          <CardBody className="p-6">
+            <h3 className="text-xl font-bold text-emerald-400 font-mono flex items-center gap-2 mb-6">
+              <Icon icon="lucide:brain" width={20} height={20} />
+              CUSTOM INSTRUCTIONS
+            </h3>
+            
+            {/* Primary User */}
+            <div className="space-y-4 mb-6">
+              <div>
+                <p className="text-sm text-gray-400 font-mono">PRIMARY USER</p>
+                <p className="text-white font-mono">{manifest.ai_config.primary_user}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 font-mono">USER TL;DR</p>
+                <p className="text-gray-300 font-mono text-sm">{manifest.marcoData?.tldr || "CEO DietFlow, rebelde intelectual"}</p>
+              </div>
+            </div>
+
+            {/* AI Behavior */}
+            <div className="space-y-4 mb-6 p-4 bg-purple-950/20 rounded-lg border border-purple-400/20">
+              <div>
+                <p className="text-sm text-purple-400 font-mono mb-2">AI BEHAVIOR</p>
+                <p className="text-gray-300 font-mono text-xs leading-relaxed">
+                  {manifest.ai_config.persona.substring(0, 200)}...
+                </p>
+              </div>
+            </div>
+
+            {/* MCP Context */}
+            <div className="space-y-4 p-4 bg-cyan-950/20 rounded-lg border border-cyan-400/20">
+              <div>
+                <p className="text-sm text-cyan-400 font-mono mb-2">MCP CONTEXT</p>
+                <p className="text-gray-300 font-mono text-xs leading-relaxed">
+                  {manifest.mcp_instructions}
+                </p>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Memory System Section */}
+        <Card className="bg-gray-900/50 border border-gray-700/50">
+          <CardBody className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-green-400 font-mono flex items-center gap-2">
+                <Icon icon="lucide:database" width={20} height={20} />
+                MEMORY SYSTEM
+              </h3>
+              <Button
+                size="sm"
+                onClick={() => onTabChange?.('custom-instructions')}
+                className="bg-green-600/20 border border-green-400/30 text-green-400 hover:bg-green-600/30 font-mono"
+              >
+                <Icon icon="lucide:settings" width={14} height={14} />
+                Manage
+              </Button>
+            </div>
+            
+            {/* Memory Stats */}
+            <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700/30 text-center mb-6">
+              <p className="text-3xl font-bold text-green-400 font-mono">{manifest.ai_config.memory_count}</p>
+              <p className="text-green-400 text-sm font-mono">Total Memories</p>
+              <p className="text-xs text-gray-400 font-mono">Available on demand</p>
+            </div>
+
+            {/* Memory List */}
+            <div className="space-y-3">
+              <p className="text-sm text-gray-400 font-mono mb-3">RECENT MEMORIES</p>
+              <div className="max-h-96 overflow-y-auto space-y-2">
+                {manifest.memorySummary.length > 0 ? (
+                  manifest.memorySummary.map((memory, index) => (
+                    <motion.div
+                      key={memory.id}
+                      className="p-3 bg-green-950/20 rounded-lg border border-green-400/20"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 + index * 0.05 }}
+                    >
+                      <h4 className="font-semibold text-green-400 font-mono text-sm">{memory.title}</h4>
+                      <div className="flex justify-between items-center mt-2">
+                        <span className="text-xs text-green-400 font-mono">
+                          {new Date(memory.created_at || Date.now()).toLocaleDateString('pt-BR')}
+                        </span>
+                        {memory.tags && memory.tags.length > 0 && (
+                          <div className="flex gap-1 flex-wrap">
+                            {memory.tags.slice(0, 2).map((tag, tagIndex) => (
+                              <Chip 
+                                key={tagIndex}
+                                size="sm" 
+                                className="text-xs bg-gray-700/50 text-gray-300"
+                              >
+                                {tag}
+                              </Chip>
+                            ))}
+                            {memory.tags.length > 2 && (
+                              <span className="text-xs text-gray-500">+{memory.tags.length - 2}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-6 font-mono text-sm">No memories found</p>
                 )}
               </div>
             </div>
           </CardBody>
         </Card>
       </motion.div>
-
-      {/* Neural Manifest */}
+      
+      {/* Sync Status */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
-          <CardBody className="p-8">
-            <h3 className="text-2xl font-bold mb-6 text-emerald-400 font-mono flex items-center gap-3">
-              <Icon icon="lucide:brain" width={24} height={24} />
-              Neural Manifest
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* People Section */}
-              <div className="bg-slate-900/60 p-6 rounded-lg border border-slate-700/50">
-                <h4 className="font-semibold text-blue-400 mb-4 font-mono flex items-center gap-2">
-                  <Icon icon="lucide:users" width={16} height={16} />
-                  People ({manifest.people?.length || 0})
-                </h4>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {manifest.people?.map((person, index) => (
-                    <div key={index} className="border-b border-slate-700/30 pb-3 last:border-b-0">
-                      <div className="flex justify-between items-start">
-                        <span className="text-slate-100 font-medium font-mono">{person.name}</span>
-                        <span className="text-slate-400 text-xs font-mono">({person.relation})</span>
-                      </div>
-                      {person.tldr && (
-                        <p className="text-slate-500 text-xs mt-1 font-mono">{person.tldr}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Projects Section */}
-              <div className="bg-slate-900/60 p-6 rounded-lg border border-slate-700/50">
-                <h4 className="font-semibold text-purple-400 mb-4 font-mono flex items-center gap-2">
-                  <Icon icon="lucide:rocket" width={16} height={16} />
-                  Projects & Sprints
-                </h4>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {manifest.projects?.map((project, index) => (
-                    <div key={index} className="border-b border-slate-700/30 pb-3 last:border-b-0">
-                      <div className="flex justify-between items-start">
-                        <span className="text-slate-100 font-medium font-mono">{project.name}</span>
-                        <span className="text-slate-400 text-xs font-mono">{project.sprint_count} sprints</span>
-                      </div>
-                      {project.tldr && (
-                        <p className="text-slate-500 text-xs mt-1 font-mono">{project.tldr}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      </motion.div>
-
-      {/* AI Behavior Config */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
-          <CardBody className="p-8">
-            <h3 className="text-2xl font-bold mb-6 text-emerald-400 font-mono flex items-center gap-3">
-              <Icon icon="lucide:settings" width={24} height={24} />
-              AI Behavior Config
-            </h3>
-            
-            <div className="bg-slate-900/60 p-6 rounded-lg border border-slate-700/50">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <h4 className="font-semibold text-blue-400 mb-3 font-mono">Core Persona</h4>
-                  <div className="text-sm space-y-2 font-mono">
-                    <p><span className="text-slate-400">User:</span> <span className="text-slate-100">{manifest.user?.name}</span></p>
-                    <p><span className="text-slate-400">Persona:</span> <span className="text-slate-100">{manifest.user?.persona}</span></p>
-                    <p className="text-xs text-slate-500 mt-3 leading-relaxed">
-                      IA rebelde e inteligente. Parceira intelectual do Marco. Humor ácido, provocações carinhosas, sem bullshit.
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-purple-400 mb-3 font-mono">Context Instructions</h4>
-                  <div className="text-xs text-slate-400 space-y-1 font-mono">
-                    <p>• Use manifest data to avoid redundant calls</p>
-                    <p>• Reference people by relationship context</p>
-                    <p>• Track project progress and blockers</p>
-                    <p>• Maintain rebellious but helpful tone</p>
-                    <p>• Focus on actionable insights, not fluff</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      </motion.div>
-
-      {/* System Status */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
         className="text-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.6 }}
       >
-        <div className="inline-flex items-center gap-4 bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 rounded-lg px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-            <span className="text-emerald-400 font-mono text-sm">Supabase Connected</span>
-          </div>
-          <div className="text-slate-500 font-mono text-xs">
-            Last sync: {new Date(manifest.last_sync).toLocaleString('pt-BR')}
-          </div>
-          <Button
-            onClick={loadManifest}
-            size="sm"
-            className="bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:bg-slate-600/60 font-mono"
-          >
-            <Icon icon="lucide:refresh-cw" width={14} height={14} />
-            Refresh
-          </Button>
-        </div>
+        <p className="text-xs text-emerald-400 font-mono">
+          ✅ Neural Manifest Synced - {new Date(manifest.last_sync).toLocaleString('pt-BR')}
+        </p>
       </motion.div>
     </div>
   );

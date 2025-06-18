@@ -17,6 +17,7 @@ interface NeuralContextType {
   notifyProjectChange: () => void;
   notifyPersonChange: () => void;
   notifySprintChange: () => void;
+  notifyPersonaChange: () => void;
   updateStats: (newStats: Partial<NeuralStats>) => void;
   reloadAllData: () => void;
 }

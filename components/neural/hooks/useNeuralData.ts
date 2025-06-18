@@ -64,6 +64,14 @@ export function useNeuralData() {
     }));
   }, []);
 
+  // Notifica quando persona IA é atualizada
+  const notifyPersonaChange = useCallback(() => {
+    setStats(prev => ({
+      ...prev,
+      last_updated: new Date().toISOString()
+    }));
+  }, []);
+
   // Atualiza stats completas (para Overview)
   const updateStats = useCallback((newStats: Partial<NeuralStats>) => {
     setStats(prev => ({
@@ -86,6 +94,7 @@ export function useNeuralData() {
     notifyProjectChange,
     notifyPersonChange,
     notifySprintChange,
+    notifyPersonaChange,
     updateStats,
     reloadAllData
   };

@@ -9,7 +9,7 @@ import { Select, SelectItem } from "@heroui/select";
 import { Chip } from "@heroui/chip";
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from '../../lib/supabase';
+import { detailQueries, supabase } from '../../lib/supabase';
 import { useNeuralContext } from './context/NeuralContext';
 import { CollapsibleForm, CollapsibleSection } from './CollapsibleForm';
 import { Breadcrumb } from './Breadcrumb';
@@ -82,6 +82,12 @@ function SprintDetail({ sprint, onBack, onUpdate }: {
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [editTaskData, setEditTaskData] = useState({ title: '', description: '', priority: 3 });
   const [editNoteData, setEditNoteData] = useState({ title: '', content: '', tags: '' });
+
+  // Update states when sprint changes
+  useEffect(() => {
+    setTempTitle(sprint.name);
+    setTempTldr(sprint.tldr || '');
+  }, [sprint.name, sprint.tldr]);
 
   const updateSprint = async (updates: any) => {
     try {
@@ -362,12 +368,22 @@ function SprintDetail({ sprint, onBack, onUpdate }: {
               <Input
                 value={tempTitle}
                 onChange={(e) => setTempTitle(e.target.value)}
-                onBlur={() => {
-                  if (tempTitle.trim() !== sprint.name) {
-                    updateSprint({ name: tempTitle.trim() });
+                onBlur={async () => {
+                  if (tempTitle.trim() !== sprint.name && tempTitle.trim()) {
+                    await updateSprint({ name: tempTitle.trim() });
                   }
                   setEditingTitle(false);
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  }
+                  if (e.key === 'Escape') {
+                    setTempTitle(sprint.name);
+                    setEditingTitle(false);
+                  }
+                }}
+                autoFocus
                 className="w-64"
                 classNames={{
                   inputWrapper: "bg-slate-800/60 border-slate-600/60",
@@ -377,8 +393,9 @@ function SprintDetail({ sprint, onBack, onUpdate }: {
             </div>
           ) : (
             <h2 
-              className="text-2xl font-bold text-purple-400 font-mono cursor-pointer hover:text-purple-300"
+              className="text-2xl font-bold text-purple-400 font-mono cursor-pointer hover:text-purple-300 transition-colors"
               onClick={() => setEditingTitle(true)}
+              title="Click to edit sprint name"
             >
               🎯 {sprint.name}
             </h2>
@@ -797,6 +814,41 @@ function ProjectDetail({ project, onBack, onSelectSprint, onDeleteProject }: {
     tldr: ''
   });
   const [, forceUpdate] = useState({});
+  
+  // Edit states for project
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingTldr, setEditingTldr] = useState(false);
+  const [tempTitle, setTempTitle] = useState(project.name);
+  const [tempTldr, setTempTldr] = useState(project.tldr || '');
+  
+  // Update states when project changes
+  useEffect(() => {
+    setTempTitle(project.name);
+    setTempTldr(project.tldr || '');
+  }, [project.name, project.tldr]);
+  
+  const updateProject = async (updates: any) => {
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update(updates)
+        .eq('id', project.id);
+
+      if (error) {
+        console.error('Erro ao atualizar projeto:', error);
+        return false;
+      }
+
+      // Update local project data
+      Object.assign(project, updates);
+      forceUpdate({});
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar projeto:', error);
+      return false;
+    }
+  };
+  
   const getRelativeTime = (dateString: string) => {
     try {
       const now = new Date();
@@ -899,13 +951,45 @@ function ProjectDetail({ project, onBack, onSelectSprint, onDeleteProject }: {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <motion.h2 
-            className="text-4xl font-bold text-purple-400 font-mono"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            📁 {project.name}
-          </motion.h2>
+          {editingTitle ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={tempTitle}
+                onChange={(e) => setTempTitle(e.target.value)}
+                onBlur={async () => {
+                  if (tempTitle.trim() !== project.name && tempTitle.trim()) {
+                    await updateProject({ name: tempTitle.trim() });
+                  }
+                  setEditingTitle(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  }
+                  if (e.key === 'Escape') {
+                    setTempTitle(project.name);
+                    setEditingTitle(false);
+                  }
+                }}
+                autoFocus
+                className="w-80"
+                classNames={{
+                  inputWrapper: "bg-slate-800/60 border-slate-600/60",
+                  input: "text-purple-400 font-mono text-3xl font-bold"
+                }}
+              />
+            </div>
+          ) : (
+            <motion.h2 
+              className="text-4xl font-bold text-purple-400 font-mono cursor-pointer hover:text-purple-300 transition-colors"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              onClick={() => setEditingTitle(true)}
+              title="Click to edit project name"
+            >
+              📁 {project.name}
+            </motion.h2>
+          )}
           
           <div className="flex items-center gap-4 text-sm text-slate-400 font-mono">
             <span>{project.sprint_count} sprints</span>
@@ -995,14 +1079,61 @@ function ProjectDetail({ project, onBack, onSelectSprint, onDeleteProject }: {
       </AnimatePresence>
 
       {/* Project TL;DR */}
-      {project.tldr && (
-        <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
-          <CardBody className="p-6">
-            <h3 className="font-semibold text-purple-400 font-mono mb-3">Project Description</h3>
-            <p className="text-slate-300 font-mono">{project.tldr}</p>
-          </CardBody>
-        </Card>
-      )}
+      <Card className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
+        <CardBody className="p-6">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="font-semibold text-purple-400 font-mono">Project Description</h3>
+            <Button
+              isIconOnly
+              size="sm"
+              variant="flat"
+              onClick={() => setEditingTldr(!editingTldr)}
+              className="bg-slate-600/40 border border-slate-500/40 text-slate-300 hover:bg-slate-600/60"
+            >
+              <Icon icon="lucide:edit" width={14} height={14} />
+            </Button>
+          </div>
+          
+          {editingTldr ? (
+            <div className="space-y-2">
+              <Textarea 
+                value={tempTldr}
+                onChange={(e) => setTempTldr(e.target.value)}
+                placeholder="Descrição do projeto..."
+                minRows={3}
+                classNames={{
+                  inputWrapper: "bg-slate-900/60 border-slate-600/60",
+                  input: "text-slate-100 font-mono"
+                }}
+              />
+              <div className="flex gap-2">
+                <Button 
+                  size="sm"
+                  onClick={async () => {
+                    await updateProject({ tldr: tempTldr });
+                    setEditingTldr(false);
+                  }}
+                  className="bg-green-600 text-white"
+                >
+                  <Icon icon="lucide:check" width={14} height={14} />
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="bordered"
+                  onClick={() => {
+                    setTempTldr(project.tldr || '');
+                    setEditingTldr(false);
+                  }}
+                >
+                  <Icon icon="lucide:x" width={14} height={14} />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-slate-300 font-mono">{project.tldr || 'Sem descrição - clique no ícone para editar'}</p>
+          )}
+        </CardBody>
+      </Card>
 
       {/* Sprints */}
       <div className="space-y-4">
