@@ -3,10 +3,6 @@
     "app/api/mcp-server/route.ts": {
       "maxDuration": 30,
       "memory": 1024
-    },
-    "app/api/mcp-server-v2/route.ts": {
-      "maxDuration": 30,
-      "memory": 1024
     }
   },
   "headers": [
@@ -36,10 +32,6 @@
     {
       "source": "/mcp",
       "destination": "/api/mcp-server"
-    },
-    {
-      "source": "/mcp-v2",
-      "destination": "/api/mcp-server-v2"
     }
   ]
 } 
