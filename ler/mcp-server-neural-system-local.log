@@ -1,0 +1,35 @@
+2025-06-18T15:19:43.827Z [neural-system-local] [info] Initializing server... { metadata: undefined }
+2025-06-18T15:19:43.858Z [neural-system-local] [info] Generated authentication token for server { metadata: undefined }
+2025-06-18T15:19:43.870Z [neural-system-local] [info] Server started and connected successfully { metadata: undefined }
+2025-06-18T15:19:43.872Z [neural-system-local] [info] Message from client: {"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"claude-ai","version":"0.1.0"}},"jsonrpc":"2.0","id":0} { metadata: undefined }
+[31893] Using automatically selected callback port: 12339
+[31893] [31893] Connecting to remote server: http://localhost:3000/api/mcp-server?token=neural_access_2024
+[31893] Using transport strategy: http-first
+[31893] Connected to remote server using StreamableHTTPClientTransport
+[31893] Local STDIO server running
+[31893] Proxy established successfully between local STDIO and remote StreamableHTTPClientTransport
+[31893] Press Ctrl+C to exit
+[31893] [Local→Remote] initialize
+[31893] {
+  "jsonrpc": "2.0",
+  "id": 0,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {},
+    "clientInfo": {
+      "name": "claude-ai (via mcp-remote 0.1.16)",
+      "version": "0.1.0"
+    },
+    "_claudeMcpAuthToken": "1c2533dca5af0650a3ede6715edcd04600eaa43226cec99e00e87e5ada20fa04"
+  }
+}
+[31893] [Remote→Local] 0
+2025-06-18T15:19:44.594Z [neural-system-local] [info] Message from server: {"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"2025-03-26","capabilities":{"tools":{"listChanged":true},"resources":{"subscribe":true,"listChanged":true},"prompts":{"listChanged":true},"logging":{}},"serverInfo":{"name":"neural-system","version":"1.0.0"}}} { metadata: undefined }
+2025-06-18T15:19:44.595Z [neural-system-local] [info] Client transport closed { metadata: undefined }
+2025-06-18T15:19:44.595Z [neural-system-local] [info] Server transport closed { metadata: undefined }
+2025-06-18T15:19:44.595Z [neural-system-local] [info] Client transport closed { metadata: undefined }
+2025-06-18T15:19:44.595Z [neural-system-local] [info] Server transport closed unexpectedly, this is likely due to the process exiting early. If you are developing this MCP server you can add output to stderr (i.e. `console.error('...')` in JavaScript, `print('...', file=sys.stderr)` in python) and it will appear in this log. { metadata: undefined }
+2025-06-18T15:19:44.595Z [neural-system-local] [error] Server disconnected. For troubleshooting guidance, please visit our [debugging documentation](https://modelcontextprotocol.io/docs/tools/debugging) { metadata: { context: 'connection', stack: undefined } }
+2025-06-18T15:19:44.690Z [neural-system-local] [info] Server transport closed { metadata: undefined }
+2025-06-18T15:19:44.690Z [neural-system-local] [info] Client transport closed { metadata: undefined }

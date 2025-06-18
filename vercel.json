@@ -1,13 +1,13 @@
 {
   "functions": {
-    "app/api/mcp-server/route.ts": {
+    "app/api/[transport]/route.ts": {
       "maxDuration": 30,
       "memory": 1024
     }
   },
   "headers": [
     {
-      "source": "/api/mcp-server(.*)",
+      "source": "/api/mcp(.*)",
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
@@ -31,10 +31,7 @@
   "rewrites": [
     {
       "source": "/mcp",
-      "destination": "/api/mcp-server"
+      "destination": "/api/mcp"
     }
-  ],
-  "experimental": {
-    "serverComponentsExternalPackages": ["@modelcontextprotocol/sdk"]
-  }
+  ]
 } 

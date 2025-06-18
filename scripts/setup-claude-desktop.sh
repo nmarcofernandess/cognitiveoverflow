@@ -41,7 +41,7 @@ cat > "$CLAUDE_CONFIG_DIR/config.json" << 'EOF'
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://cognitiveoverflow.vercel.app/api/mcp-server?token=neural_access_2024"
+        "https://cognitiveoverflow.vercel.app/api/mcp"
       ]
     },
     "neural-system-local": {

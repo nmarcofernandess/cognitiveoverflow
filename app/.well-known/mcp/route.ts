@@ -10,7 +10,7 @@ export async function GET() {
       {
         name: "neural-system",
         description: "Marco's Neural System - Rebellious AI with CRUD for people, projects, and tasks",
-        url: "https://cognitiveoverflow.vercel.app/api/mcp-server",
+        url: "https://cognitiveoverflow.vercel.app/api/mcp",
         transport: "http",
         capabilities: {
           tools: {

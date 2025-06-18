@@ -151,7 +151,7 @@ export default function OverviewTab({ onTabChange }: { onTabChange?: (tabId: str
         <div className="flex items-center gap-3">
           <Button
             onClick={() => {
-              const mcpUrl = "https://cognitiveoverflow.vercel.app/api/mcp-server?token=neural_access_2024";
+              const mcpUrl = "https://cognitiveoverflow.vercel.app/api/mcp";
               navigator.clipboard.writeText(mcpUrl);
               setShowCopySuccess(true);
               setTimeout(() => setShowCopySuccess(false), 2000);
