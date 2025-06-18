@@ -1,0 +1,45 @@
+{
+  "functions": {
+    "app/api/mcp-server/route.ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "app/api/mcp-server-v2/route.ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/mcp-server(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/mcp",
+      "destination": "/api/mcp-server"
+    },
+    {
+      "source": "/mcp-v2",
+      "destination": "/api/mcp-server-v2"
+    }
+  ]
+} 
