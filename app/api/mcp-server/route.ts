@@ -1524,6 +1524,12 @@ async function handleMCPRequest(request: JsonRpcRequest): Promise<JsonRpcRespons
         result = await getPrompt(params.name, params.arguments || {});
         break;
 
+      case "notifications/initialized":
+        console.log("📡 Client initialized notification received");
+        // Notifications don't require a response, but we'll send an empty result
+        result = {};
+        break;
+
       default:
         console.log("❌ Unknown method:", method);
         throw new Error(`Unknown method: ${method}`);
