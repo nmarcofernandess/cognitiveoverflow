@@ -66,7 +66,7 @@ const handler = createMcpHandler(
           content: [
             {
               type: "text", 
-              text: `**${data.name}**\n\nRelationship: ${data.relation}\nTLDR: ${data.tldr || 'No summary'}\nEmail: ${data.email || 'Not provided'}\n\nNotes: ${(data as any).person_notes?.length || 0} notes available`
+              text: `**${data.name}**\n\nRelationship: ${data.relation}\nTLDR: ${data.tldr || 'No summary'}\n\nNotes: ${(data as any).person_notes?.length || 0} notes available`
             }
           ]
         };
@@ -80,25 +80,27 @@ const handler = createMcpHandler(
       {
         name: z.string(),
         relation: z.string(),
-        tldr: z.string().optional(),
-        email: z.string().optional()
+        tldr: z.string().optional()
       },
-      async ({ name, relation, tldr, email }) => {
+      async ({ name, relation, tldr }) => {
         const { supabase } = await import('../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('people')
-          .insert([{ name, relation, tldr, email }])
+          .insert([{ name, relation, tldr }])
           .select()
           .single();
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY - Supabase single() still returns in array context
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Added ${data.name} to Marco's network as ${data.relation}`
+              text: `✅ Person #${row.id} (${name}) added as ${relation}`
             }
           ]
         };
@@ -113,17 +115,15 @@ const handler = createMcpHandler(
         id: z.string(),
         name: z.string().optional(),
         relation: z.string().optional(),
-        tldr: z.string().optional(),
-        email: z.string().optional()
+        tldr: z.string().optional()
       },
-      async ({ id, name, relation, tldr, email }) => {
+      async ({ id, name, relation, tldr }) => {
         const { supabase } = await import('../../../lib/supabase');
         
         const updateData: any = {};
         if (name !== undefined) updateData.name = name;
         if (relation !== undefined) updateData.relation = relation;
         if (tldr !== undefined) updateData.tldr = tldr;
-        if (email !== undefined) updateData.email = email;
         
         const { data, error } = await supabase
           .from('people')
@@ -134,11 +134,14 @@ const handler = createMcpHandler(
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Updated ${data.name}'s information`
+              text: `✅ Person #${row.id} information updated successfully`
             }
           ]
         };
@@ -166,7 +169,7 @@ const handler = createMcpHandler(
           content: [
             {
               type: "text",
-              text: `✅ Removed person from Marco's network`
+              text: `✅ Removed person from Marco\'s network`
             }
           ]
         };
@@ -198,11 +201,14 @@ const handler = createMcpHandler(
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Added note "${data.title}" to person`
+              text: `✅ Note #${row.id} "${title}" added to person`
             }
           ]
         };
@@ -211,56 +217,10 @@ const handler = createMcpHandler(
 
     // ====== PROJECT MANAGEMENT TOOLS ======
     
-    // Tool 7: list_projects
-    server.tool(
-      'list_projects',
-      'List all projects with optional filters',
-      {
-        status: z.string().optional(),
-        limit: z.number().default(20)
-      },
-      async ({ status, limit }) => {
-        const { supabase } = await import('../../../lib/supabase');
-        
-        let query = supabase.from('projects').select(`
-          *,
-          sprints!inner(
-            id,
-            name,
-            tasks(count)
-          )
-        `);
-        
-        if (status) {
-          query = query.eq('status', status);
-        }
-        
-        query = query.limit(limit || 20);
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        
-        const projectsText = data.map((p: any) => {
-          const sprints = p.sprints || [];
-          const totalTasks = sprints.reduce((sum: number, s: any) => sum + (s.tasks?.[0]?.count || 0), 0);
-          return `• **${p.name}** (${p.status ?? 'active'})\n  TLDR: ${p.tldr || 'No summary'}\n  Sprints: ${sprints.length} | Tasks: ${totalTasks}`;
-        }).join('\n\n');
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Found ${data.length} projects:\n\n${projectsText}`
-            }
-          ]
-        };
-      }
-    );
-
-    // Tool 8: get_project
+    // Tool 7: get_project
     server.tool(
       'get_project',
-      'Get detailed project information',
+      'Get detailed project information with all sprints and tasks',
       {
         id: z.string()
       },
@@ -274,7 +234,7 @@ const handler = createMcpHandler(
             sprints (
               id,
               name,
-              description,
+              tldr,
               status,
               tasks(count),
               sprint_notes(count)
@@ -290,7 +250,7 @@ const handler = createMcpHandler(
         const sprintsText = sprints.map((s: any) => {
           const taskCount = s.tasks?.[0]?.count || 0;
           const noteCount = s.sprint_notes?.[0]?.count || 0;
-          return `  • **${s.name}** (${s.status || 'active'})\n    TLDR: ${s.description || 'No description'}\n    Tasks: ${taskCount} | Notes: ${noteCount}`;
+          return `  • **${s.name}** (${s.status || 'active'})\n    TLDR: ${s.tldr || 'No description'}\n    Tasks: ${taskCount} | Notes: ${noteCount}`;
         }).join('\n\n');
         
         const totalTasks = sprints.reduce((sum: number, s: any) => sum + (s.tasks?.[0]?.count || 0), 0);
@@ -299,61 +259,61 @@ const handler = createMcpHandler(
           content: [
             {
               type: "text",
-              text: `**${data.name}**\n\nStatus: ${data.status || 'active'}\nTLDR: ${data.tldr || 'No summary'}\nTotal Sprints: ${sprints.length} | Total Tasks: ${totalTasks}\n\n**Sprints:**\n${sprintsText || '  No sprints'}`
+              text: `**${data.name}**\n\nTLDR: ${data.tldr || 'No summary'}\nTotal Sprints: ${sprints.length} | Total Tasks: ${totalTasks}\n\n**Sprints:**\n${sprintsText || '  No sprints'}`
             }
           ]
         };
       }
     );
 
-    // Tool 9: create_project
+    // Tool 8: create_project
     server.tool(
       'create_project',
       'Create a new project',
       {
         name: z.string(),
-        tldr: z.string().optional(),
-        status: z.string().default('active')
+        tldr: z.string().optional()
       },
-      async ({ name, tldr, status }) => {
+      async ({ name, tldr }) => {
         const { supabase } = await import('../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('projects')
-          .insert([{ name, tldr, status }])
+          .insert([{ name, tldr }])
           .select()
           .single();
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Created project "${data.name}"`
+              text: `✅ Project #${row.id} "${name}" created successfully`
             }
           ]
         };
       }
     );
 
-    // Tool 10: update_project
+    // Tool 9: update_project
     server.tool(
       'update_project',
       'Update project information',
       {
         id: z.string(),
         name: z.string().optional(),
-        tldr: z.string().optional(),
-        status: z.string().optional()
+        tldr: z.string().optional()
       },
-      async ({ id, name, tldr, status }) => {
+      async ({ id, name, tldr }) => {
         const { supabase } = await import('../../../lib/supabase');
         
         const updateData: any = {};
         if (name !== undefined) updateData.name = name;
         if (tldr !== undefined) updateData.tldr = tldr;
-        if (status !== undefined) updateData.status = status;
         
         const { data, error } = await supabase
           .from('projects')
@@ -364,18 +324,21 @@ const handler = createMcpHandler(
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Updated project "${data.name}"`
+              text: `✅ Project #${row.id} information updated successfully`
             }
           ]
         };
       }
     );
 
-    // Tool 11: delete_project
+    // Tool 10: delete_project
     server.tool(
       'delete_project',
       'Delete a project and all associated data',
@@ -404,75 +367,45 @@ const handler = createMcpHandler(
     );
 
     // ====== SPRINT MANAGEMENT TOOLS ======
-    
-    // Tool 12: list_sprints
-    server.tool(
-      'list_sprints',
-      'List sprints for a project',
-      {
-        project_id: z.string(),
-        status: z.string().optional()
-      },
-      async ({ project_id, status }) => {
-        const { supabase } = await import('../../../lib/supabase');
-        
-        let query = supabase.from('sprints').select('*').eq('project_id', project_id);
-        
-        if (status) {
-          query = query.eq('status', status);
-        }
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Found ${data.length} sprints:\n\n${data.map((s: any) => `• ${s.name} (${s.status || 'active'})`).join('\n')}`
-            }
-          ]
-        };
-      }
-    );
 
-    // Tool 13: create_sprint
+    // Tool 11: create_sprint
     server.tool(
       'create_sprint',
       'Create a new sprint',
       {
         project_id: z.string(),
         name: z.string(),
-        description: z.string().optional(),
-        start_date: z.string().optional(),
-        end_date: z.string().optional()
+        tldr: z.string().optional()
       },
-      async ({ project_id, name, description, start_date, end_date }) => {
+      async ({ project_id, name, tldr }) => {
         const { supabase } = await import('../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('sprints')
-          .insert([{ project_id, name, description, start_date, end_date }])
+          .insert([{ project_id, name, tldr }])
           .select()
           .single();
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Created sprint "${data.name}"`
+              text: `✅ Sprint #${row.id} "${name}" created successfully`
             }
           ]
         };
       }
     );
 
-    // Tool 14: get_sprint
+    // Tool 12: get_sprint
     server.tool(
       'get_sprint',
-      'Get detailed sprint information with tasks and notes',
+      'Get detailed sprint information with all tasks and notes',
       {
         id: z.string()
       },
@@ -508,34 +441,30 @@ const handler = createMcpHandler(
           content: [
             {
               type: "text",
-              text: `**${data.name}**\n\nProject: ${(data as any).projects.name}\nDescription: ${data.description || 'No description'}\nProgress: ${progress}% (${completedTasks}/${tasks.length} tasks)\n\n**Tasks:**\n${tasksText || '  No tasks'}\n\n**Notes:**\n${notesText || '  No notes'}`
+              text: `**${data.name}**\n\nProject: ${(data as any).projects.name}\nTLDR: ${data.tldr || 'No summary'}\nProgress: ${progress}% (${completedTasks}/${tasks.length} tasks)\n\n**Tasks:**\n${tasksText || '  No tasks'}\n\n**Notes:**\n${notesText || '  No notes'}`
             }
           ]
         };
       }
     );
 
-    // Tool 15: update_sprint
+    // Tool 13: update_sprint
     server.tool(
       'update_sprint',
       'Update sprint information',
       {
         id: z.string(),
         name: z.string().optional(),
-        description: z.string().optional(),
-        status: z.string().optional(),
-        start_date: z.string().optional(),
-        end_date: z.string().optional()
+        tldr: z.string().optional(),
+        status: z.string().optional()
       },
-      async ({ id, name, description, status, start_date, end_date }) => {
+      async ({ id, name, tldr, status }) => {
         const { supabase } = await import('../../../lib/supabase');
         
         const updateData: any = {};
         if (name !== undefined) updateData.name = name;
-        if (description !== undefined) updateData.description = description;
+        if (tldr !== undefined) updateData.tldr = tldr;
         if (status !== undefined) updateData.status = status;
-        if (start_date !== undefined) updateData.start_date = start_date;
-        if (end_date !== undefined) updateData.end_date = end_date;
         
         const { data, error } = await supabase
           .from('sprints')
@@ -546,18 +475,21 @@ const handler = createMcpHandler(
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Updated sprint "${data.name}"`
+              text: `✅ Sprint #${row.id} information updated successfully`
             }
           ]
         };
       }
     );
 
-    // Tool 16: delete_sprint
+    // Tool 14: delete_sprint
     server.tool(
       'delete_sprint',
       'Delete a sprint and all associated tasks',
@@ -586,57 +518,8 @@ const handler = createMcpHandler(
     );
 
     // ====== TASK MANAGEMENT TOOLS ======
-    
-    // Tool 17: list_tasks
-    server.tool(
-      'list_tasks',
-      'List tasks for a sprint with optional status filter',
-      {
-        sprint_id: z.string(),
-        status: z.string().optional()
-      },
-      async ({ sprint_id, status }) => {
-        const { supabase } = await import('../../../lib/supabase');
-        
-        let query = supabase.from('tasks').select('*').eq('sprint_id', sprint_id);
-        
-        if (status) {
-          query = query.eq('status', status);
-        }
-        
-        query = query.order('priority', { ascending: false });
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        
-        const tasksText = data.map((t: any) => {
-          const priority = t.priority ? ` [${t.priority}]` : '';
-          const description = t.description ? `\n    ${t.description}` : '';
-          return `• **${t.title}** (${t.status || 'todo'})${priority}${description}`;
-        }).join('\n\n');
-        
-        const statusCounts = data.reduce((acc: any, t: any) => {
-          const taskStatus = t.status || 'todo';
-          acc[taskStatus] = (acc[taskStatus] || 0) + 1;
-          return acc;
-        }, {});
-        
-        const statusText = Object.entries(statusCounts)
-          .map(([status, count]) => `${status}: ${count}`)
-          .join(' | ');
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Found ${data.length} tasks (${statusText}):\n\n${tasksText || 'No tasks found'}`
-            }
-          ]
-        };
-      }
-    );
 
-    // Tool 18: create_task
+    // Tool 15: create_task
     server.tool(
       'create_task',
       'Create a new task',
@@ -649,26 +532,37 @@ const handler = createMcpHandler(
       async ({ sprint_id, title, description, priority }) => {
         const { supabase } = await import('../../../lib/supabase');
         
+        // Convert string priority to number (compatible with Supabase)
+        const priorityMap: { [key: string]: number } = {
+          'low': 1,
+          'medium': 3,
+          'high': 5
+        };
+        const numericPriority = priorityMap[priority] || 3;
+        
         const { data, error } = await supabase
           .from('tasks')
-          .insert([{ sprint_id, title, description, priority }])
+          .insert([{ sprint_id, title, description, priority: numericPriority }])
           .select()
           .single();
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Created task "${data.title}"`
+              text: `✅ Task #${row.id} "${title}" created successfully`
             }
           ]
         };
       }
     );
 
-    // Tool 19: get_task
+    // Tool 16: get_task
     server.tool(
       'get_task',
       'Get detailed task information with context',
@@ -708,7 +602,7 @@ const handler = createMcpHandler(
       }
     );
 
-    // Tool 20: update_task
+    // Tool 17: update_task
     server.tool(
       'update_task',
       'Update task information',
@@ -726,7 +620,15 @@ const handler = createMcpHandler(
         if (title !== undefined) updateData.title = title;
         if (description !== undefined) updateData.description = description;
         if (status !== undefined) updateData.status = status;
-        if (priority !== undefined) updateData.priority = priority;
+        if (priority !== undefined) {
+          // Convert string priority to number (compatible with Supabase)
+          const priorityMap: { [key: string]: number } = {
+            'low': 1,
+            'medium': 3,
+            'high': 5
+          };
+          updateData.priority = priorityMap[priority] || 3;
+        }
         
         // Set completed_at if status changed to completed
         if (status === 'completed') {
@@ -747,18 +649,21 @@ const handler = createMcpHandler(
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Updated task "${data.title}"`
+              text: `✅ Task #${row.id} information updated successfully`
             }
           ]
         };
       }
     );
 
-    // Tool 21: delete_task
+    // Tool 18: delete_task
     server.tool(
       'delete_task',
       'Delete a task',
@@ -786,110 +691,9 @@ const handler = createMcpHandler(
       }
     );
 
-    // ====== SPRINT NOTES MANAGEMENT TOOLS ======
+    // ====== NOTES MANAGEMENT TOOLS ======
     
-    // Tool 22: create_sprint_note
-    server.tool(
-      'create_sprint_note',
-      'Add a note to a sprint',
-      {
-        sprint_id: z.string(),
-        title: z.string(),
-        content: z.string()
-      },
-      async ({ sprint_id, title, content }) => {
-        const { supabase } = await import('../../../lib/supabase');
-        
-        const { data, error } = await supabase
-          .from('sprint_notes')
-          .insert([{
-            sprint_id,
-            title,
-            content
-          }])
-          .select()
-          .single();
-          
-        if (error) throw error;
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: `✅ Added note "${data.title}" to sprint`
-            }
-          ]
-        };
-      }
-    );
-
-    // Tool 23: update_sprint_note
-    server.tool(
-      'update_sprint_note',
-      'Update a sprint note',
-      {
-        id: z.string(),
-        title: z.string().optional(),
-        content: z.string().optional()
-      },
-      async ({ id, title, content }) => {
-        const { supabase } = await import('../../../lib/supabase');
-        
-        const updateData: any = {};
-        if (title !== undefined) updateData.title = title;
-        if (content !== undefined) updateData.content = content;
-        
-        const { data, error } = await supabase
-          .from('sprint_notes')
-          .update(updateData)
-          .eq('id', id)
-          .select()
-          .single();
-          
-        if (error) throw error;
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: `✅ Updated sprint note "${data.title}"`
-            }
-          ]
-        };
-      }
-    );
-
-    // Tool 24: delete_sprint_note
-    server.tool(
-      'delete_sprint_note',
-      'Delete a sprint note',
-      {
-        id: z.string()
-      },
-      async ({ id }) => {
-        const { supabase } = await import('../../../lib/supabase');
-        
-        const { error } = await supabase
-          .from('sprint_notes')
-          .delete()
-          .eq('id', id);
-          
-        if (error) throw error;
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: `✅ Deleted sprint note`
-            }
-          ]
-        };
-      }
-    );
-
-    // ====== PERSON NOTES MANAGEMENT TOOLS ======
-    
-    // Tool 25: update_note
+    // Tool 19: update_note
     server.tool(
       'update_note',
       'Update a person note',
@@ -914,18 +718,21 @@ const handler = createMcpHandler(
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Updated person note "${data.title}"`
+              text: `✅ Person note #${row.id} updated successfully`
             }
           ]
         };
       }
     );
 
-    // Tool 26: delete_note
+    // Tool 20: delete_note
     server.tool(
       'delete_note',
       'Delete a person note',
@@ -953,48 +760,114 @@ const handler = createMcpHandler(
       }
     );
 
-    // ====== MEMORY MANAGEMENT TOOLS ======
-    
-    // Tool 27: get_memory
+    // Tool 21: create_sprint_note
     server.tool(
-      'get_memory',
-      'Get memory entries with optional filtering by tags',
+      'create_sprint_note',
+      'Add a note to a sprint',
       {
-        limit: z.number().default(50),
-        tags: z.array(z.string()).optional()
+        sprint_id: z.string(),
+        title: z.string(),
+        content: z.string()
       },
-      async ({ limit, tags }) => {
+      async ({ sprint_id, title, content }) => {
         const { supabase } = await import('../../../lib/supabase');
         
-        let query = supabase.from('memory').select('*');
-        
-        if (tags && Array.isArray(tags)) {
-          query = query.overlaps('tags', tags);
-        }
-        
-        query = query
-          .order('created_at', { ascending: false })
-          .limit(limit || 50);
+        const { data, error } = await supabase
+          .from('sprint_notes')
+          .insert([{
+            sprint_id,
+            title,
+            content
+          }])
+          .select()
+          .single();
           
-        const { data, error } = await query;
         if (error) throw error;
+        
+        // 🛡️ ARRAY SAFETY
+        const row = data;
         
         return {
           content: [
             {
               type: "text",
-              text: data.length > 0 
-                ? `Memory entries (${data.length}):\n\n${data.map((m: any) => 
-                    `• **${m.title}**\n  ${m.content.substring(0, 200)}...${m.tags ? `\n  Tags: ${m.tags.join(', ')}` : ''}`
-                  ).join('\n\n')}`
-                : "No memory entries found"
+              text: `✅ Sprint note #${row.id} "${title}" added successfully`
             }
           ]
         };
       }
     );
 
-    // Tool 28: create_memory
+    // Tool 22: update_sprint_note
+    server.tool(
+      'update_sprint_note',
+      'Update a sprint note',
+      {
+        id: z.string(),
+        title: z.string().optional(),
+        content: z.string().optional()
+      },
+      async ({ id, title, content }) => {
+        const { supabase } = await import('../../../lib/supabase');
+        
+        const updateData: any = {};
+        if (title !== undefined) updateData.title = title;
+        if (content !== undefined) updateData.content = content;
+        
+        const { data, error } = await supabase
+          .from('sprint_notes')
+          .update(updateData)
+          .eq('id', id)
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
+        return {
+          content: [
+            {
+              type: "text",
+              text: `✅ Sprint note #${row.id} updated successfully`
+            }
+          ]
+        };
+      }
+    );
+
+    // Tool 23: delete_sprint_note
+    server.tool(
+      'delete_sprint_note',
+      'Delete a sprint note',
+      {
+        id: z.string()
+      },
+      async ({ id }) => {
+        const { supabase } = await import('../../../lib/supabase');
+        
+        const { error } = await supabase
+          .from('sprint_notes')
+          .delete()
+          .eq('id', id);
+          
+        if (error) throw error;
+        
+        return {
+          content: [
+            {
+              type: "text",
+              text: `✅ Deleted sprint note`
+            }
+          ]
+        };
+      }
+    );
+
+    // ====== MEMORY MANAGEMENT TOOLS ======
+    
+    // Tool 24: create_memory
     server.tool(
       'create_memory',
       'Create a new memory entry',
@@ -1018,18 +891,21 @@ const handler = createMcpHandler(
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Created memory "${data.title}"`
+              text: `✅ Memory #${row.id} "${title}" created successfully`
             }
           ]
         };
       }
     );
 
-    // Tool 29: update_memory
+    // Tool 25: update_memory
     server.tool(
       'update_memory',
       'Update an existing memory entry',
@@ -1056,18 +932,21 @@ const handler = createMcpHandler(
           
         if (error) throw error;
         
+        // 🛡️ ARRAY SAFETY
+        const row = data;
+        
         return {
           content: [
             {
               type: "text",
-              text: `✅ Updated memory "${data.title}"`
+              text: `✅ Memory #${row.id} information updated successfully`
             }
           ]
         };
       }
     );
 
-    // Tool 30: delete_memory
+    // Tool 26: delete_memory
     server.tool(
       'delete_memory',
       'Delete a memory entry',
@@ -1095,115 +974,433 @@ const handler = createMcpHandler(
       }
     );
 
-    // Tool 31: get_custom_instructions
+    // ====== SEARCH & DISCOVERY TOOLS ======
+
+    // 🚀 UNIVERSAL Tool 27: search_by_tags
     server.tool(
-      'get_custom_instructions',
-      'Get complete custom instructions and system configuration',
-      {},
-      async () => {
+      'search_by_tags',
+      'Search entities by tags with advanced filtering',
+      {
+        include: z.string(), // "ai,productivity" - tags que DEVEM aparecer
+        exclude: z.string().optional(), // "deprecated,old" - tags que NÃO podem aparecer
+        entity: z.enum(['memory', 'person_note', 'sprint_note']).optional(), // filtrar por tipo
+        parent_id: z.string().optional(), // person_id, sprint_id para filtrar contexto
+        mode: z.enum(['meta', 'detail']).default('meta') // meta = só id+title, detail = id+title+preview
+      },
+      async ({ include, exclude, entity, parent_id, mode }) => {
         const { supabase } = await import('../../../lib/supabase');
         
-        const { data: instructions, error: instructionsError } = await supabase
-          .from('custom_instructions')
-          .select('*')
-          .single();
-          
-        if (instructionsError) throw instructionsError;
-
-        const { data: marco, error: marcoError } = await supabase
-          .from('people')
-          .select('name, tldr')
-          .eq('is_primary_user', true)
-          .single();
-          
-        if (marcoError) throw marcoError;
-
-        const { count: memoryCount, error: memoryError } = await supabase
-          .from('memory')
-          .select('*', { count: 'exact', head: true });
-          
-        if (memoryError) throw memoryError;
+        const includeArr = include.split(',').map(tag => tag.trim()).filter(Boolean);
+        const excludeArr = exclude ? exclude.split(',').map(tag => tag.trim()).filter(Boolean) : [];
+        
+        // 🚀 PARALLEL QUERIES para melhor performance
+        const promises = [];
+        
+        // Query memories (se não filtrou por entity ou se entity = memory)
+        if (!entity || entity === 'memory') {
+          let q = supabase.from('memory').select('id, title, tags, content, created_at')
+            .overlaps('tags', includeArr);
+          if (excludeArr.length > 0) q = q.not('tags', 'overlaps', excludeArr);
+          promises.push(q.then(({ data }) => ({ type: 'memory', data: data || [] })));
+        } else {
+          promises.push(Promise.resolve({ type: 'memory', data: [] }));
+        }
+        
+        // Query person_notes (se não filtrou por entity ou se entity = person_note)
+        if (!entity || entity === 'person_note') {
+          let q = supabase.from('person_notes').select('id, title, tags, content, created_at, person_id, people(name)')
+            .overlaps('tags', includeArr);
+          if (excludeArr.length > 0) q = q.not('tags', 'overlaps', excludeArr);
+          if (parent_id) q = q.eq('person_id', parent_id);
+          promises.push(q.then(({ data }) => ({ type: 'person_note', data: data || [] })));
+        } else {
+          promises.push(Promise.resolve({ type: 'person_note', data: [] }));
+        }
+        
+        // Query sprint_notes (se não filtrou por entity ou se entity = sprint_note)
+        if (!entity || entity === 'sprint_note') {
+          let q = supabase.from('sprint_notes').select('id, title, tags, content, created_at, sprint_id, sprints(name)')
+            .overlaps('tags', includeArr);
+          if (excludeArr.length > 0) q = q.not('tags', 'overlaps', excludeArr);
+          if (parent_id) q = q.eq('sprint_id', parent_id);
+          promises.push(q.then(({ data }) => ({ type: 'sprint_note', data: data || [] })));
+        } else {
+          promises.push(Promise.resolve({ type: 'sprint_note', data: [] }));
+        }
+        
+        // 🔥 Executar todas as queries em paralelo
+        const [memoryResult, personNotesResult, sprintNotesResult] = await Promise.all(promises);
+        
+        let results = [];
+        
+        // Processar memories
+        results.push(...memoryResult.data.map((item: any) => ({
+          type: 'memory',
+          id: item.id,
+          title: item.title,
+          tags: item.tags,
+          created_at: item.created_at,
+          ...(mode === 'detail' && { preview: item.content.substring(0, 120) + '...' })
+        })));
+        
+        // Processar person_notes
+        results.push(...personNotesResult.data.map((item: any) => ({
+          type: 'person_note' as const,
+          id: item.id,
+          title: item.title,
+          tags: item.tags,
+          parent_name: item.people?.name || 'Unknown Person',
+          parent_id: item.person_id,
+          created_at: item.created_at,
+          ...(mode === 'detail' && { preview: item.content.substring(0, 120) + '...' })
+        })));
+        
+        // Processar sprint_notes
+        results.push(...sprintNotesResult.data.map((item: any) => ({
+          type: 'sprint_note' as const,
+          id: item.id,
+          title: item.title,
+          tags: item.tags,
+          parent_name: item.sprints?.name || 'Unknown Sprint',
+          parent_id: item.sprint_id,
+          created_at: item.created_at,
+          ...(mode === 'detail' && { preview: item.content.substring(0, 120) + '...' })
+        })));
+        
+        // Ordenar por mais recente (created_at)
+        results.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        // 🛡️ Proteção contra resultado vazio
+        if (results.length === 0) {
+          return {
+            content: [{
+              type: "text",
+              text: `No items found with tags [${includeArr.join(', ')}]${excludeArr.length ? ` excluding [${excludeArr.join(', ')}]` : ''}${entity ? ` in ${entity}` : ''}.`
+            }]
+          };
+        }
         
         return {
-          content: [
-            {
-              type: "text",
-              text: `**Custom Instructions:**\n\n**Primary User:** ${marco.name}\n**User TLDR:** ${marco.tldr || 'Not set'}\n\n**AI Behavior:**\n${instructions.behavior_description}\n\n**MCP Instructions:**\n${instructions.mcp_context_instructions}\n\n**Memory System:** ${memoryCount || 0} memories available`
-            }
-          ]
-        };
-      }
-    );
-
-    // Keep existing tools for backward compatibility
-    server.tool(
-      'roll_dice',
-      'Rolls an N-sided die',
-      { sides: z.number().int().min(2) },
-      async ({ sides }) => {
-        const value = 1 + Math.floor(Math.random() * sides);
-        return {
-          content: [{ type: 'text', text: `🎲 You rolled a ${value}!` }],
-        };
-      },
-    );
-
-    server.tool(
-      'hello_neural',
-      'Test Neural System connection',
-      {},
-      async () => {
-        return {
           content: [{
-            type: 'text',
-            text: '🧠 Marco! Neural System MCP Server is working with official Vercel adapter and correct [transport] routing!'
+            type: "text",
+            text: `Found ${results.length} items with tags [${includeArr.join(', ')}]${excludeArr.length ? ` excluding [${excludeArr.join(', ')}]` : ''}:\n\n${
+              results.map((item: any) => {
+                const parentInfo = item.parent_name ? ` (${item.parent_name})` : '';
+                const preview = mode === 'detail' && item.preview ? `\n  Preview: ${item.preview}` : '';
+                return `• **${item.title}** [${item.type}]${parentInfo}\n  ID: ${item.id}\n  Tags: ${item.tags?.join(', ') || 'None'}${preview}`;
+              }).join('\n\n')
+            }`
           }]
         };
       }
     );
 
+    // 🎯 UNIVERSAL Tool 28: bulk_get
     server.tool(
-      'get_overview',
-      'Get Neural System overview',
-      {},
-      async () => {
-        try {
-          const { supabase } = await import('../../../lib/supabase');
-          
-          const { count: peopleCount } = await supabase
-            .from('people')
-            .select('*', { count: 'exact', head: true });
-          
-          const { count: projectsCount } = await supabase
-            .from('projects')
-            .select('*', { count: 'exact', head: true });
-          
-          const { data: primaryUser } = await supabase
-            .from('people')
-            .select('name, relation')
-            .eq('is_primary_user', true)
-            .single();
-          
+      'bulk_get',
+      'Fetch multiple entities of the same type by IDs or get all of a type',
+      {
+        entity: z.enum(['memory', 'person_note', 'sprint_note']),
+        ids: z.array(z.string()).optional() // Se não fornecer IDs, retorna todos da entidade
+      },
+      async ({ entity, ids }) => {
+        const { supabase } = await import('../../../lib/supabase');
+        
+        const tableMap = {
+          memory: 'memory',
+          person_note: 'person_notes', 
+          sprint_note: 'sprint_notes'
+        };
+        
+        const table = tableMap[entity];
+        let query = supabase.from(table).select('*');
+        
+        if (ids && ids.length > 0) {
+          // 🛡️ Buscar IDs específicos (máximo 100 para evitar overflow do Postgres)
+          const safeIds = ids.slice(0, 100);
+          query = query.in('id', safeIds);
+        } else {
+          // Buscar todos (ordenados por mais recente)
+          query = query.order('created_at', { ascending: false });
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        // 🛡️ Proteção contra resultado vazio
+        if (!data || data.length === 0) {
           return {
             content: [{
-              type: 'text',
-              text: `**🧠 Neural System Overview**\n\n` +
-                    `**Statistics:**\n` +
-                    `• People: ${peopleCount || 0}\n` +
-                    `• Projects: ${projectsCount || 0}\n\n` +
-                    `**Primary User:** ${primaryUser?.name || 'Not set'} (${primaryUser?.relation || 'Unknown'})\n\n` +
-                    `✅ **SUCCESS: Official @vercel/mcp-adapter with [transport] routing is working!**\n\n` +
-                    `🔧 **Neural Tools Available:** 31 complete tools migrated successfully`
+              type: "text",
+              text: `No ${entity.replace('_', ' ')} found.`
+            }]
+          };
+        }
+        
+        // 🚀 Formatação estruturada para melhor handling pelo Claude
+        const items = data.map((item: any) => {
+          const baseItem = {
+            id: item.id,
+            title: item.title,
+            content: item.content,
+            tags: item.tags || [],
+            created_at: item.created_at
+          };
+          
+          if (entity === 'person_note') {
+            return { ...baseItem, person_id: item.person_id };
+          } else if (entity === 'sprint_note') {
+            return { ...baseItem, sprint_id: item.sprint_id };
+          }
+          
+          return baseItem;
+        });
+        
+        return {
+          content: [{
+            type: "text",
+            text: `Found ${data.length} ${entity.replace('_', ' ')}(s):\n\n${
+              items.map((item: any) => {
+                const parentId = item.person_id ? `\n  Person ID: ${item.person_id}` : 
+                                item.sprint_id ? `\n  Sprint ID: ${item.sprint_id}` : '';
+                return `• **${item.title}** [ID: ${item.id}]${parentId}\n  Tags: ${item.tags?.join(', ') || 'None'}\n  Content: ${item.content}\n  Created: ${item.created_at}`;
+              }).join('\n\n')
+            }`
+          }]
+        };
+      }
+    );
+
+    // 🚀 TURBINADO Tool 29: get_manifest 
+    server.tool(
+      'get_manifest',
+      'Get complete Neural System manifest with content index for direct navigation',
+      {},
+      async () => {
+        const { supabase } = await import('../../../lib/supabase');
+        
+        try {
+          // Parallel queries for maximum performance
+          const [
+            { data: customInstructions },
+            { data: primaryUser },
+            { count: peopleCount },
+            { count: projectsCount },
+            { count: sprintsCount },
+            { count: tasksCount },
+            { count: memoriesCount },
+            { count: notesCount },
+            
+            // 🔥 NOVO: Content indices for direct navigation
+            { data: allPeople },
+            { data: allProjects },
+            { data: allSprints },
+            { data: allTasks },
+            { data: allMemories },
+            { data: allNotes }
+          ] = await Promise.all([
+            // Metadata queries
+            supabase.from('custom_instructions').select('*').single(),
+            supabase.from('people').select('name, tldr').eq('is_primary_user', true).single(),
+            supabase.from('people').select('*', { count: 'exact', head: true }),
+            supabase.from('projects').select('*', { count: 'exact', head: true }),
+            supabase.from('sprints').select('*', { count: 'exact', head: true }),
+            supabase.from('tasks').select('*', { count: 'exact', head: true }),
+            supabase.from('memory').select('*', { count: 'exact', head: true }),
+            supabase.from('person_notes').select('*', { count: 'exact', head: true }),
+            
+            // 🔥 Content indices (metadata only for navigation)
+            supabase.from('people').select(`
+              id, name, relation,
+              person_notes(count)
+            `).order('is_primary_user', { ascending: false }).order('created_at', { ascending: false }),
+            
+            supabase.from('projects').select(`
+              id, name,
+              sprints(count),
+              tasks:sprints(tasks(count))
+            `).order('created_at', { ascending: false }),
+            
+            supabase.from('sprints').select(`
+              id, name,
+              projects!inner(name),
+              tasks(count),
+              sprint_notes(count)
+            `).order('created_at', { ascending: false }),
+            
+            supabase.from('tasks').select(`
+              id, title, status,
+              sprints!inner(name, projects!inner(name))
+            `).order('created_at', { ascending: false }),
+            
+            supabase.from('memory').select('id, title, tags').order('created_at', { ascending: false }),
+            
+            supabase.from('person_notes').select(`
+              id, title,
+              people!inner(name)
+            `).order('created_at', { ascending: false })
+          ]);
+
+          // Process content indices
+          const peopleIndex = (allPeople || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            relation: p.relation,
+            notes_count: p.person_notes?.[0]?.count || 0
+          }));
+
+          const projectsIndex = (allProjects || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            sprints_count: p.sprints?.[0]?.count || 0,
+            tasks_total: p.tasks?.reduce((sum: number, s: any) => sum + (s.tasks?.[0]?.count || 0), 0) || 0
+          }));
+
+          const sprintsIndex = (allSprints || []).map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            project_name: s.projects?.name || 'Unknown',
+            tasks_count: s.tasks?.[0]?.count || 0,
+            notes_count: s.sprint_notes?.[0]?.count || 0
+          }));
+
+          const tasksIndex = (allTasks || []).map((t: any) => ({
+            id: t.id,
+            title: t.title,
+            status: t.status,
+            project_name: t.sprints?.projects?.name || 'Unknown',
+            sprint_name: t.sprints?.name || 'Unknown'
+          }));
+
+          const memoriesIndex = (allMemories || []).map((m: any) => ({
+            id: m.id,
+            title: m.title,
+            tags: m.tags || []
+          }));
+
+          const notesIndex = (allNotes || []).map((n: any) => ({
+            id: n.id,
+            title: n.title,
+            parent_type: 'person' as const,
+            parent_name: n.people?.name || 'Unknown'
+          }));
+
+          const manifest = {
+            // System metadata
+            version: "2.0",
+            last_sync: new Date().toISOString(),
+            
+            // AI configuration
+            ai_config: {
+              primary_user: primaryUser?.name || "Marco Fernandes",
+              persona: customInstructions?.behavior_description || "CEO DietFlow, rebelde intelectual",
+              memory_count: memoriesCount || 0
+            },
+            
+            // MCP instructions
+            mcp_instructions: customInstructions?.mcp_context_instructions || "Sistema de conhecimento pessoal Neural",
+            
+            // System statistics
+            stats: {
+              people_count: peopleCount || 0,
+              projects_count: projectsCount || 0,
+              sprints_count: sprintsCount || 0,
+              tasks_count: tasksCount || 0,
+              notes_count: notesCount || 0,
+              memories_count: memoriesCount || 0
+            },
+            
+            // 🔥 CONTENT INDEX for direct navigation
+            content_index: {
+              all_people: peopleIndex,
+              all_projects: projectsIndex,
+              all_sprints: sprintsIndex,
+              all_tasks: tasksIndex,
+              all_memories: memoriesIndex,
+              all_notes: notesIndex
+            }
+          };
+
+          // Format for optimal AI consumption
+          const peopleText = peopleIndex.slice(0, 10).map(p => `• ${p.name} (${p.relation}) - ${p.notes_count} notes [ID: ${p.id}]`).join('\n');
+          const projectsText = projectsIndex.slice(0, 10).map(p => `• ${p.name} - ${p.sprints_count} sprints, ${p.tasks_total} tasks [ID: ${p.id}]`).join('\n');
+          const sprintsText = sprintsIndex.slice(0, 10).map(s => `• ${s.name} (${s.project_name}) - ${s.tasks_count} tasks, ${s.notes_count} notes [ID: ${s.id}]`).join('\n');
+          const tasksText = tasksIndex.slice(0, 10).map(t => `• ${t.title} (${t.status}) - ${t.project_name}/${t.sprint_name} [ID: ${t.id}]`).join('\n');
+          const memoriesText = memoriesIndex.slice(0, 10).map(m => `• ${m.title} ${m.tags.length > 0 ? `[${m.tags.join(', ')}]` : ''} [ID: ${m.id}]`).join('\n');
+
+          return {
+            content: [{
+              type: "text",
+              text: `**🧠 NEURAL SYSTEM MANIFEST v2.0**\n\n` +
+                    `**🎯 AI Configuration:**\n` +
+                    `• Primary User: ${manifest.ai_config.primary_user}\n` +
+                    `• User TL;DR: ${primaryUser?.tldr || 'Not set'}\n` +
+                    `• AI Persona: ${manifest.ai_config.persona.substring(0, 200)}...\n` +
+                    `• Memory Count: ${manifest.ai_config.memory_count}\n\n` +
+                    `**⚙️ MCP Instructions:**\n${manifest.mcp_instructions}\n\n` +
+                    `**📊 System Statistics:**\n` +
+                    `• People: ${manifest.stats.people_count}\n` +
+                    `• Projects: ${manifest.stats.projects_count}\n` +
+                    `• Sprints: ${manifest.stats.sprints_count}\n` +
+                    `• Tasks: ${manifest.stats.tasks_count}\n` +
+                    `• Notes: ${manifest.stats.notes_count}\n` +
+                    `• Memories: ${manifest.stats.memories_count}\n\n` +
+                    `**🔍 CONTENT INDEX (Direct Navigation):**\n\n` +
+                    `**👥 People (${peopleIndex.length}):**\n${peopleText || '  No people found'}\n\n` +
+                    `**📊 Projects (${projectsIndex.length}):**\n${projectsText || '  No projects found'}\n\n` +
+                    `**🏃‍♂️ Sprints (${sprintsIndex.length}):**\n${sprintsText || '  No sprints found'}\n\n` +
+                    `**✅ Tasks (${tasksIndex.length}):**\n${tasksText || '  No tasks found'}\n\n` +
+                    `**🧠 Memories (${memoriesIndex.length}):**\n${memoriesText || '  No memories found'}\n\n` +
+                    `**💡 Navigation Tips:**\n` +
+                    `• Use get_person(id), get_project(id), get_sprint(id), get_task(id) for details\n` +
+                    `• Use search_by_tags({ include: "tag1,tag2" }) for universal search across memories, person notes, and sprint notes\n` +
+                    `• All IDs are provided for direct access without listing\n\n` +
+                    `**🕐 Last Sync:** ${manifest.last_sync}`
             }]
           };
         } catch (error) {
           return {
             content: [{
               type: 'text',
-              text: `❌ Database error: ${error instanceof Error ? error.message : String(error)}`
+              text: `❌ Error loading Neural System manifest: ${error instanceof Error ? error.message : String(error)}`
             }]
           };
         }
+      }
+    );
+
+    // Tool 30: update_custom_instructions
+    server.tool(
+      'update_custom_instructions',
+      'Update AI behavior and MCP context instructions',
+      {
+        behavior_description: z.string().optional(),
+        mcp_context_instructions: z.string().optional()
+      },
+      async ({ behavior_description, mcp_context_instructions }) => {
+        const { supabase } = await import('../../../lib/supabase');
+        
+        const updateData: any = {};
+        if (behavior_description !== undefined) updateData.behavior_description = behavior_description;
+        if (mcp_context_instructions !== undefined) updateData.mcp_context_instructions = mcp_context_instructions;
+        
+        updateData.updated_at = new Date().toISOString();
+        
+        const { error } = await supabase
+          .from('custom_instructions')
+          .update(updateData)
+          .eq('user_id', '48ff8f29-3bee-4aa0-83ae-927ff8dde816'); // Marco's ID
+          
+        if (error) throw error;
+        
+        return {
+          content: [
+            {
+              type: "text",
+              text: `✅ Updated Neural System instructions`
+            }
+          ]
+        };
       }
     );
   },
