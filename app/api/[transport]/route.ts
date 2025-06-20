@@ -238,6 +238,13 @@ const handler = createMcpHandler(
               status,
               tasks(count),
               sprint_notes(count)
+            ),
+            project_notes (
+              id,
+              title,
+              content,
+              tags,
+              created_at
             )
           `)
           .eq('id', id)
@@ -247,11 +254,15 @@ const handler = createMcpHandler(
         if (!data) throw new Error('Project not found');
         
         const sprints = (data as any).sprints || [];
+        const projectNotes = (data as any).project_notes || [];
+        
         const sprintsText = sprints.map((s: any) => {
           const taskCount = s.tasks?.[0]?.count || 0;
           const noteCount = s.sprint_notes?.[0]?.count || 0;
           return `  • **${s.name}** (${s.status || 'active'})\n    TLDR: ${s.tldr || 'No description'}\n    Tasks: ${taskCount} | Notes: ${noteCount}`;
         }).join('\n\n');
+        
+        const projectNotesText = projectNotes.map((n: any) => `  • ${n.title}`).join('\n');
         
         const totalTasks = sprints.reduce((sum: number, s: any) => sum + (s.tasks?.[0]?.count || 0), 0);
         
@@ -259,7 +270,7 @@ const handler = createMcpHandler(
           content: [
             {
               type: "text",
-              text: `**${data.name}**\n\nTLDR: ${data.tldr || 'No summary'}\nTotal Sprints: ${sprints.length} | Total Tasks: ${totalTasks}\n\n**Sprints:**\n${sprintsText || '  No sprints'}`
+              text: `**${data.name}**\n\nTLDR: ${data.tldr || 'No summary'}\nTotal Sprints: ${sprints.length} | Total Tasks: ${totalTasks}\nProject Notes: ${projectNotes.length}\n\n**Sprints:**\n${sprintsText || '  No sprints'}\n\n**Project Notes:**\n${projectNotesText || '  No notes'}`
             }
           ]
         };
@@ -347,6 +358,17 @@ const handler = createMcpHandler(
       },
       async ({ id }) => {
         const { supabase } = await import('../../../lib/supabase');
+        
+        // ✅ VERIFICAR SE É PROTEGIDO
+        const { data: project } = await supabase
+          .from('projects')
+          .select('name, is_protected')
+          .eq('id', id)
+          .single();
+          
+        if (project?.is_protected) {
+          throw new Error(`Cannot delete protected project "${project.name}"`);
+        }
         
         const { error } = await supabase
           .from('projects')
@@ -865,9 +887,153 @@ const handler = createMcpHandler(
       }
     );
 
+    // ====== PROJECT NOTES MANAGEMENT TOOLS ======
+    
+    // Tool 24: create_project_note
+    server.tool(
+      'create_project_note',
+      'Add a note directly to a project',
+      {
+        project_id: z.string(),
+        title: z.string(),
+        content: z.string(),
+        tags: z.array(z.string()).optional()
+      },
+      async ({ project_id, title, content, tags }) => {
+        const { supabase } = await import('../../../lib/supabase');
+        
+        const { data, error } = await supabase
+          .from('project_notes')
+          .insert([{
+            project_id,
+            title,
+            content,
+            tags: tags || []
+          }])
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        return {
+          content: [{
+            type: "text",
+            text: `✅ Project note #${data.id} "${title}" added successfully`
+          }]
+        };
+      }
+    );
+
+    // Tool 25: update_project_note
+    server.tool(
+      'update_project_note',
+      'Update a project note',
+      {
+        id: z.string(),
+        title: z.string().optional(),
+        content: z.string().optional(),
+        tags: z.array(z.string()).optional()
+      },
+      async ({ id, title, content, tags }) => {
+        const { supabase } = await import('../../../lib/supabase');
+        
+        const updateData: any = {};
+        if (title !== undefined) updateData.title = title;
+        if (content !== undefined) updateData.content = content;
+        if (tags !== undefined) updateData.tags = tags;
+        
+        const { data, error } = await supabase
+          .from('project_notes')
+          .update(updateData)
+          .eq('id', id)
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        return {
+          content: [{
+            type: "text",
+            text: `✅ Project note #${data.id} updated successfully`
+          }]
+        };
+      }
+    );
+
+    // Tool 26: delete_project_note
+    server.tool(
+      'delete_project_note',
+      'Delete a project note',
+      {
+        id: z.string()
+      },
+      async ({ id }) => {
+        const { supabase } = await import('../../../lib/supabase');
+        
+        const { error } = await supabase
+          .from('project_notes')
+          .delete()
+          .eq('id', id);
+          
+        if (error) throw error;
+        
+        return {
+          content: [{
+            type: "text",
+            text: `✅ Deleted project note successfully`
+          }]
+        };
+      }
+    );
+
+    // Tool 27: create_knowledge_note
+    server.tool(
+      'create_knowledge_note',
+      'Add a note to the default Knowledge project (convenience tool)',
+      {
+        title: z.string(),
+        content: z.string(),
+        tags: z.array(z.string()).optional()
+      },
+      async ({ title, content, tags }) => {
+        const { supabase } = await import('../../../lib/supabase');
+        
+        // Buscar o projeto padrão
+        const { data: defaultProject } = await supabase
+          .from('projects')
+          .select('id')
+          .eq('is_default_project', true)
+          .single();
+          
+        if (!defaultProject) {
+          throw new Error('Default project not found');
+        }
+        
+        const { data, error } = await supabase
+          .from('project_notes')
+          .insert([{
+            project_id: defaultProject.id,
+            title,
+            content,
+            tags: tags || []
+          }])
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        return {
+          content: [{
+            type: "text",
+            text: `✅ Knowledge note #${data.id} "${title}" added to Conhecimento Geral`
+          }]
+        };
+      }
+    );
+
     // ====== MEMORY MANAGEMENT TOOLS ======
     
-    // Tool 24: create_memory
+    // Tool 28: create_memory
     server.tool(
       'create_memory',
       'Create a new memory entry',

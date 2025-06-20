@@ -18,11 +18,24 @@ interface Project {
   id: string;
   name: string;
   tldr?: string;
+  is_default_project?: boolean;
+  is_protected?: boolean;
   created_at: string;
   updated_at?: string;
   sprint_count?: number;
   total_tasks?: number;
+  notes_count?: number;
   sprints?: Sprint[];
+  notes?: ProjectNote[];
+}
+
+interface ProjectNote {
+  id: string;
+  project_id: string;
+  title: string;
+  content?: string;
+  tags: string[];
+  created_at: string;
 }
 
 interface Sprint {
@@ -821,6 +834,13 @@ function ProjectDetail({ project, onBack, onSelectSprint, onDeleteProject }: {
   const [tempTitle, setTempTitle] = useState(project.name);
   const [tempTldr, setTempTldr] = useState(project.tldr || '');
   
+  // Project Notes states
+  const [showNotesForm, setShowNotesForm] = useState(false);
+  const [showNotesList, setShowNotesList] = useState(false);
+  const [newNote, setNewNote] = useState({ title: '', content: '', tags: '' });
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [editNoteData, setEditNoteData] = useState({ title: '', content: '', tags: '' });
+  
   // Update states when project changes
   useEffect(() => {
     setTempTitle(project.name);
@@ -927,6 +947,127 @@ function ProjectDetail({ project, onBack, onSelectSprint, onDeleteProject }: {
     } catch (error) {
       console.error('Erro ao criar sprint:', error);
       alert('Erro ao criar sprint. Tente novamente.');
+    }
+  };
+
+  // Project Notes functions
+  const createNote = async () => {
+    if (!newNote.title.trim()) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('project_notes')
+        .insert([{
+          project_id: project.id,
+          title: newNote.title,
+          content: newNote.content,
+          tags: newNote.tags.split(',').map(t => t.trim()).filter(Boolean)
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao criar nota:', error);
+        return;
+      }
+
+      // Update local state instead of reload
+      const updatedProject = {
+        ...project,
+        notes: [data, ...(project.notes || [])]
+      };
+      Object.assign(project, updatedProject);
+
+      setNewNote({ title: '', content: '', tags: '' });
+      setShowNotesForm(false);
+      forceUpdate({});
+    } catch (error) {
+      console.error('Erro ao criar nota:', error);
+    }
+  };
+
+  // Edit note functions
+  const handleEditNote = (note: ProjectNote) => {
+    setEditingNote(note.id);
+    setEditNoteData({
+      title: note.title,
+      content: note.content || '',
+      tags: note.tags.join(', ')
+    });
+  };
+
+  const handleSaveNoteEdit = async () => {
+    if (!editingNote) return;
+    
+    try {
+      const { error } = await supabase
+        .from('project_notes')
+        .update({
+          title: editNoteData.title,
+          content: editNoteData.content,
+          tags: editNoteData.tags.split(',').map(t => t.trim()).filter(Boolean)
+        })
+        .eq('id', editingNote);
+
+      if (error) {
+        console.error('Erro ao atualizar nota:', error);
+        return;
+      }
+
+      // Update local state instead of reload
+      const updatedNotes = (project.notes || []).map(note => 
+        note.id === editingNote 
+          ? { 
+              ...note, 
+              title: editNoteData.title,
+              content: editNoteData.content,
+              tags: editNoteData.tags.split(',').map(t => t.trim()).filter(Boolean)
+            }
+          : note
+      );
+      
+      const updatedProject = {
+        ...project,
+        notes: updatedNotes
+      };
+      Object.assign(project, updatedProject);
+
+      setEditingNote(null);
+      forceUpdate({});
+    } catch (error) {
+      console.error('Erro ao atualizar nota:', error);
+    }
+  };
+
+  const handleCancelNoteEdit = () => {
+    setEditingNote(null);
+    setEditNoteData({ title: '', content: '', tags: '' });
+  };
+
+  const deleteNote = async (noteId: string) => {
+    if (!confirm('Tem certeza que deseja deletar esta nota?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('project_notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (error) {
+        console.error('Erro ao deletar nota:', error);
+        return;
+      }
+
+      // Update local state instead of reload
+      const updatedNotes = (project.notes || []).filter(note => note.id !== noteId);
+      const updatedProject = {
+        ...project,
+        notes: updatedNotes
+      };
+      Object.assign(project, updatedProject);
+      forceUpdate({});
+    } catch (error) {
+      console.error('Erro ao deletar nota:', error);
     }
   };
 
@@ -1190,6 +1331,157 @@ function ProjectDetail({ project, onBack, onSelectSprint, onDeleteProject }: {
           </motion.div>
         )}
       </div>
+
+      {/* Project Notes */}
+      <Card className="bg-slate-800/60 backdrop-blur-sm border border-slate-600/60">
+        <CardBody className="p-6">
+          <div className="space-y-6">
+            <h3 className="text-xl font-bold text-purple-400 font-mono">
+              Project Notes {project.notes ? `(${project.notes.length})` : '(0)'}
+            </h3>
+            
+            {/* Add Note Form */}
+            <CollapsibleForm
+              title="Add Project Note"
+              buttonText="Add Note"
+              isOpen={showNotesForm}
+              onToggle={() => setShowNotesForm(!showNotesForm)}
+              buttonColor="bg-purple-600 hover:bg-purple-500"
+              borderColor="border-purple-400/40"
+            >
+              <div className="space-y-4">
+                <Input
+                  placeholder="Note title..."
+                  value={newNote.title}
+                  onChange={(e) => setNewNote({...newNote, title: e.target.value})}
+                  classNames={{
+                    inputWrapper: "bg-slate-700/60 border-slate-600/60",
+                    input: "text-slate-100 font-mono"
+                  }}
+                />
+                <Textarea
+                  placeholder="Note content..."
+                  value={newNote.content}
+                  onChange={(e) => setNewNote({...newNote, content: e.target.value})}
+                  minRows={2}
+                  classNames={{
+                    inputWrapper: "bg-slate-700/60 border-slate-600/60",
+                    input: "text-slate-100 font-mono"
+                  }}
+                />
+                <Input
+                  placeholder="Tags (comma separated)..."
+                  value={newNote.tags}
+                  onChange={(e) => setNewNote({...newNote, tags: e.target.value})}
+                  classNames={{
+                    inputWrapper: "bg-slate-700/60 border-slate-600/60",
+                    input: "text-slate-100 font-mono"
+                  }}
+                />
+                <Button 
+                  onClick={createNote}
+                  isDisabled={!newNote.title.trim()}
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-mono"
+                >
+                  <Icon icon="lucide:plus" width={16} height={16} />
+                  Create Note
+                </Button>
+              </div>
+            </CollapsibleForm>
+
+            {/* Notes List */}
+            <CollapsibleSection
+              title="Project Notes"
+              count={project.notes?.length || 0}
+              isOpen={showNotesList}
+              onToggle={() => setShowNotesList(!showNotesList)}
+            >
+              <div className="space-y-4">
+                {project.notes && project.notes.length > 0 ? (
+                  project.notes.map(note => (
+                    <div key={note.id} className="bg-slate-900/60 p-4 rounded-lg border-l-4 border-purple-500">
+                      {editingNote === note.id ? (
+                        <div className="space-y-3">
+                          <Input
+                            value={editNoteData.title}
+                            onChange={(e) => setEditNoteData({...editNoteData, title: e.target.value})}
+                            className="text-sm"
+                          />
+                          <Textarea
+                            value={editNoteData.content}
+                            onChange={(e) => setEditNoteData({...editNoteData, content: e.target.value})}
+                            minRows={2}
+                            className="text-sm"
+                          />
+                          <Input
+                            value={editNoteData.tags}
+                            onChange={(e) => setEditNoteData({...editNoteData, tags: e.target.value})}
+                            placeholder="Tags (comma separated)..."
+                            className="text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={handleSaveNoteEdit} className="bg-green-600">
+                              <Icon icon="lucide:check" width={12} height={12} />
+                            </Button>
+                            <Button size="sm" variant="bordered" onClick={handleCancelNoteEdit}>
+                              <Icon icon="lucide:x" width={12} height={12} />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-semibold text-slate-100 font-mono">{note.title}</h4>
+                            <div className="flex gap-2">
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="flat"
+                                onClick={() => handleEditNote(note)}
+                                className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20"
+                              >
+                                <Icon icon="lucide:edit" width={14} height={14} />
+                              </Button>
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="flat"
+                                onClick={() => deleteNote(note.id)}
+                                className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              >
+                                <Icon icon="lucide:trash-2" width={14} height={14} />
+                              </Button>
+                            </div>
+                          </div>
+                          {note.content && (
+                            <p className="text-slate-300 text-sm mb-3 font-mono">{note.content}</p>
+                          )}
+                          <div className="flex justify-between items-center">
+                            <div className="flex gap-2">
+                              {note.tags?.map(tag => (
+                                <Chip key={tag} size="sm" className="bg-slate-700 text-slate-300 font-mono text-xs">
+                                  #{tag}
+                                </Chip>
+                              ))}
+                            </div>
+                            <span className="text-xs text-slate-500 font-mono">
+                              {new Date(note.created_at).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-slate-500 font-mono text-sm italic text-center py-8">
+                    No project notes yet
+                  </div>
+                )}
+              </div>
+            </CollapsibleSection>
+          </div>
+        </CardBody>
+      </Card>
     </div>
   );
 }
@@ -1279,17 +1571,26 @@ export default function ProjectsTab({ onTabChange }: { onTabChange?: (tabId: str
       setSprints(sprintsWithCounts);
 
       // Aggregate data for projects
-      const projectsWithAggregates = (projectsData || []).map(project => {
-        const projectSprints = sprintsWithCounts.filter(sprint => sprint.project_id === project.id);
-        const totalTasks = projectSprints.reduce((sum, sprint) => sum + sprint.task_count, 0);
-        
-        return {
-          ...project,
-          sprint_count: projectSprints.length,
-          total_tasks: totalTasks,
-          sprints: projectSprints
-        };
-      });
+      const projectsWithAggregates = await Promise.all(
+        (projectsData || []).map(async (project) => {
+          const projectSprints = sprintsWithCounts.filter(sprint => sprint.project_id === project.id);
+          const totalTasks = projectSprints.reduce((sum, sprint) => sum + sprint.task_count, 0);
+          
+          // Get project notes count
+          const { count: notesCount } = await supabase
+            .from('project_notes')
+            .select('*', { count: 'exact', head: true })
+            .eq('project_id', project.id);
+          
+          return {
+            ...project,
+            sprint_count: projectSprints.length,
+            total_tasks: totalTasks,
+            notes_count: notesCount || 0,
+            sprints: projectSprints
+          };
+        })
+      );
 
       setProjects(projectsWithAggregates);
     } catch (error) {
@@ -1327,6 +1628,35 @@ export default function ProjectsTab({ onTabChange }: { onTabChange?: (tabId: str
       }
     } catch (error) {
       console.error('Erro ao carregar detalhes do sprint:', error);
+    }
+  };
+
+  const loadProjectDetail = async (projectId: string) => {
+    try {
+      // Load project notes
+      const { data: notes, error } = await supabase
+        .from('project_notes')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+
+      console.log('🔥 Loading project notes:', notes, 'Error:', error);
+
+      if (error) {
+        console.error('Erro ao carregar notas do projeto:', error);
+      } else {
+        // Find the project and add the notes
+        const project = projects.find(p => p.id === projectId);
+        if (project) {
+          console.log('🔥 Setting project with notes:', notes?.length || 0, 'notes');
+          setSelectedProject({
+            ...project,
+            notes: notes || []
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar detalhes do projeto:', error);
     }
   };
 
@@ -1671,7 +2001,10 @@ export default function ProjectsTab({ onTabChange }: { onTabChange?: (tabId: str
               key={project.id}
               className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/60 hover:border-purple-400/40 transition-all duration-300 hover:shadow-lg hover:shadow-purple-400/10 cursor-pointer"
               isPressable
-              onPress={() => setSelectedProject(project)}
+              onPress={() => {
+                setSelectedProject(project);
+                loadProjectDetail(project.id);
+              }}
             >
               <CardBody className="p-6">
                 <div className="flex justify-between items-start">
@@ -1682,6 +2015,7 @@ export default function ProjectsTab({ onTabChange }: { onTabChange?: (tabId: str
                       <div className="flex items-center gap-4 text-sm text-slate-400 font-mono">
                         <span>{project.sprint_count || 0} sprint{(project.sprint_count || 0) !== 1 ? 's' : ''}</span>
                         <span>{project.total_tasks || 0} task{(project.total_tasks || 0) !== 1 ? 's' : ''}</span>
+                        <span>{project.notes_count || 0} note{(project.notes_count || 0) !== 1 ? 's' : ''}</span>
                       </div>
                     </div>
                     

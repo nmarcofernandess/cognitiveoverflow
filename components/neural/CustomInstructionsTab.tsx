@@ -21,6 +21,8 @@ export default function CustomInstructionsTab({ onTabChange }: { onTabChange?: (
   const [editingMCP, setEditingMCP] = useState(false)
   const [editingMemory, setEditingMemory] = useState<Memory | null>(null)
   const [newMemory, setNewMemory] = useState({ title: '', content: '', tags: '' })
+  const [searchTags, setSearchTags] = useState('')
+  const [filteredMemory, setFilteredMemory] = useState<Memory[]>([])
 
   const { isOpen, onOpen, onClose } = useDisclosure()
 
@@ -45,11 +47,32 @@ export default function CustomInstructionsTab({ onTabChange }: { onTabChange?: (
       setCustomInstructions(instructions)
       setMarcoData(marco)
       setAllMemory(memory)
+      setFilteredMemory(memory) // Initialize filtered with all memories
     } catch (error) {
       console.error('Error loading custom instructions data:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSearchByTags = async () => {
+    if (!searchTags.trim()) {
+      setFilteredMemory(allMemory)
+      return
+    }
+
+    try {
+      const tags = searchTags.split(',').map(tag => tag.trim()).filter(Boolean)
+      const filtered = await customQueries.getMemoryByTags(tags)
+      setFilteredMemory(filtered)
+    } catch (error) {
+      console.error('Error searching memory by tags:', error)
+    }
+  }
+
+  const clearSearch = () => {
+    setSearchTags('')
+    setFilteredMemory(allMemory)
   }
 
   const handleSaveBehavior = async () => {
@@ -99,6 +122,10 @@ export default function CustomInstructionsTab({ onTabChange }: { onTabChange?: (
     if (success) {
       setEditingMemory(null)
       await loadData()
+      // Reapply search filter if active
+      if (searchTags.trim()) {
+        setTimeout(() => handleSearchByTags(), 100)
+      }
       notifyPersonaChange()
     }
   }
@@ -107,6 +134,10 @@ export default function CustomInstructionsTab({ onTabChange }: { onTabChange?: (
     const success = await customQueries.deleteMemory(id)
     if (success) {
       await loadData()
+      // Reapply search filter if active
+      if (searchTags.trim()) {
+        setTimeout(() => handleSearchByTags(), 100)
+      }
       notifyPersonaChange()
     }
   }
@@ -268,9 +299,47 @@ export default function CustomInstructionsTab({ onTabChange }: { onTabChange?: (
           </Button>
         </CardHeader>
         <CardBody>
+          {/* Search by Tags */}
+          <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+            <div className="flex items-center gap-3 mb-2">
+              <Icon icon="lucide:search" className="w-5 h-5 text-purple-600" />
+              <h4 className="font-semibold text-purple-600">Buscar por Tags</h4>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Digite tags separadas por vírgula (ex: projeto, importante, deadline)"
+                value={searchTags}
+                onChange={(e) => setSearchTags(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearchByTags()}
+                className="flex-1"
+              />
+              <Button
+                color="primary"
+                size="sm"
+                onClick={handleSearchByTags}
+              >
+                <Icon icon="lucide:search" className="w-4 h-4" />
+              </Button>
+              {searchTags && (
+                <Button
+                  variant="light"
+                  size="sm"
+                  onClick={clearSearch}
+                >
+                  <Icon icon="lucide:x" className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            {searchTags && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                {filteredMemory.length} memória(s) encontrada(s) para: {searchTags}
+              </p>
+            )}
+          </div>
+
           <div className="space-y-4">
-            {allMemory.length > 0 ? (
-              allMemory.map((memory) => (
+            {filteredMemory.length > 0 ? (
+              filteredMemory.map((memory) => (
                 <div key={memory.id} className="p-4 border rounded-lg">
                   {editingMemory?.id === memory.id ? (
                     <div className="space-y-4">

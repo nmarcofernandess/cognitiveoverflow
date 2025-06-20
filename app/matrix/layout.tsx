@@ -13,8 +13,8 @@ export default function MatrixLayout({
 
   useEffect(() => {
     // Verificar se já está autenticado com o sistema unificado
-    const auth = sessionStorage.getItem('matrix_global_auth');
-    const timestamp = sessionStorage.getItem('matrix_global_auth_timestamp');
+    const auth = localStorage.getItem('matrix_global_auth');
+    const timestamp = localStorage.getItem('matrix_global_auth_timestamp');
     
     if (auth === 'redpill_validated' && timestamp) {
       // Verificar se não expirou (7 dias)
@@ -26,8 +26,8 @@ export default function MatrixLayout({
         setAuthenticated(true);
       } else {
         // Sessão expirada
-        sessionStorage.removeItem('matrix_global_auth');
-        sessionStorage.removeItem('matrix_global_auth_timestamp');
+        localStorage.removeItem('matrix_global_auth');
+        localStorage.removeItem('matrix_global_auth_timestamp');
       }
     }
     

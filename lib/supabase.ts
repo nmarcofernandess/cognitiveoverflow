@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ''
 
 // Validate env vars but don't break build - just log loudly
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -40,8 +40,19 @@ export interface Project {
   id: string
   name: string
   tldr?: string
+  is_default_project?: boolean
+  is_protected?: boolean
   created_at: string
   updated_at?: string
+}
+
+export interface ProjectNote {
+  id: string
+  project_id: string
+  title: string
+  content?: string
+  tags: string[]
+  created_at: string
 }
 
 export interface Sprint {
@@ -230,6 +241,8 @@ export const detailQueries = {
         id,
         name,
         tldr,
+        is_default_project,
+        is_protected,
         created_at,
         updated_at,
         sprints(
@@ -242,17 +255,30 @@ export const detailQueries = {
 
     if (error) throw error;
 
-    return (data || []).map(project => ({
-      ...project,
-      sprint_count: (project as any).sprints?.length || 0,
-      total_tasks: (project as any).sprints?.reduce((total: number, sprint: any) => 
-        total + (sprint.tasks?.length || 0), 0) || 0,
-      sprints: ((project as any).sprints || []).map((sprint: any) => ({
-        id: sprint.id,
-        name: sprint.name,
-        task_count: sprint.tasks?.length || 0
-      }))
-    }));
+    // Get project notes count for each project
+    const projectsWithCounts = await Promise.all(
+      (data || []).map(async (project) => {
+        const { count: notesCount } = await supabase
+          .from('project_notes')
+          .select('*', { count: 'exact', head: true })
+          .eq('project_id', project.id);
+        
+        return {
+          ...project,
+          sprint_count: (project as any).sprints?.length || 0,
+          total_tasks: (project as any).sprints?.reduce((total: number, sprint: any) => 
+            total + (sprint.tasks?.length || 0), 0) || 0,
+          notes_count: notesCount || 0,
+          sprints: ((project as any).sprints || []).map((sprint: any) => ({
+            id: sprint.id,
+            name: sprint.name,
+            task_count: sprint.tasks?.length || 0
+          }))
+        };
+      })
+    );
+
+    return projectsWithCounts;
   }
 };
 

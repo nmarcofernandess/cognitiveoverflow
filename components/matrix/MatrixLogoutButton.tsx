@@ -15,8 +15,8 @@ export default function MatrixLogoutButton({
 }: MatrixLogoutButtonProps) {
   const handleLogout = () => {
     // Limpar auth global
-    sessionStorage.removeItem('matrix_global_auth');
-    sessionStorage.removeItem('matrix_global_auth_timestamp');
+    localStorage.removeItem('matrix_global_auth');
+    localStorage.removeItem('matrix_global_auth_timestamp');
     
     // Redirecionar para a página especificada
     window.location.href = redirectTo;

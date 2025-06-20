@@ -51,8 +51,8 @@ const MatrixProject: React.FC = () => {
       <div className="fixed top-6 right-6 z-[100]">
         <Button
           onClick={() => {
-            sessionStorage.removeItem('matrix_global_auth');
-            sessionStorage.removeItem('matrix_global_auth_timestamp');
+            localStorage.removeItem('matrix_global_auth');
+            localStorage.removeItem('matrix_global_auth_timestamp');
             window.location.href = '/matrix';
           }}
           size="lg"
