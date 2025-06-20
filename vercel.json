@@ -3,11 +3,19 @@
     "app/api/[transport]/route.ts": {
       "maxDuration": 30,
       "memory": 1024
+    },
+    "app/api/minimal/[transport]/route.ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "app/api/optimized/[transport]/route.ts": {
+      "maxDuration": 30,
+      "memory": 1024
     }
   },
   "headers": [
     {
-      "source": "/api/mcp(.*)",
+      "source": "/api/(mcp|minimal|optimized)(.*)",
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
@@ -32,6 +40,14 @@
     {
       "source": "/mcp",
       "destination": "/api/mcp"
+    },
+    {
+      "source": "/minimal/mcp",
+      "destination": "/api/minimal/mcp"
+    },
+    {
+      "source": "/optimized/mcp", 
+      "destination": "/api/optimized/mcp"
     }
   ]
 } 
