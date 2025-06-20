@@ -4,27 +4,17 @@
       "command": "node",
       "args": [
         "/Users/marcofernandes/.nvm/versions/node/v18.19.0/bin/mcp-remote",
-        "https://cognitiveoverflow.vercel.app/api/sse"
+        "https://cognitiveoverflow.vercel.app/api/mcp"
       ],
       "env": {
         "NEURAL_ACCESS_TOKEN": "neural_access_2024"
       }
     },
-    "neural-system-minimal": {
+    "neural-system-backup": {
       "command": "node", 
       "args": [
         "/Users/marcofernandes/.nvm/versions/node/v18.19.0/bin/mcp-remote",
-        "https://cognitiveoverflow.vercel.app/api/minimal/sse"
-      ],
-      "env": {
-        "NEURAL_ACCESS_TOKEN": "neural_access_2024"
-      }
-    },
-    "neural-system-optimized": {
-      "command": "node",
-      "args": [
-        "/Users/marcofernandes/.nvm/versions/node/v18.19.0/bin/mcp-remote", 
-        "https://cognitiveoverflow.vercel.app/api/optimized/sse"
+        "https://cognitiveoverflow.vercel.app/api/mcp"
       ],
       "env": {
         "NEURAL_ACCESS_TOKEN": "neural_access_2024"
@@ -34,7 +24,7 @@
       "command": "node",
       "args": [
         "/Users/marcofernandes/.nvm/versions/node/v18.19.0/bin/mcp-remote",
-        "http://localhost:3000/api/sse"
+        "http://localhost:3000/api/mcp"
       ],
       "env": {
         "NEURAL_ACCESS_TOKEN": "neural_access_2024"

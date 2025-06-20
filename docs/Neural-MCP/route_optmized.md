@@ -1,4 +1,4 @@
-  import { z } from 'zod';
+import { z } from 'zod';
 import { createMcpHandler } from '@vercel/mcp-adapter';
 
 const identifierSchema = z.object({
@@ -15,7 +15,7 @@ async function resolveEntityId(
   parentField?: string,
   parentValue?: string
 ): Promise<string | null> {
-  const { supabase } = await import('../../../lib/supabase');
+  const { supabase } = await import('../../../../lib/supabase');
   
   if (identifier.id) {
     const { data } = await supabase.from(table).select('id').eq('id', identifier.id).single();
@@ -83,7 +83,7 @@ const handler = createMcpHandler(
         mode: z.enum(['meta', 'full']).default('meta')
       },
       async ({ relation, search, limit, offset, mode }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         let query = supabase.from('people').select('*, person_notes(count)', { count: 'exact' });
         
@@ -123,8 +123,8 @@ const handler = createMcpHandler(
         
         return {
           content: [{
-            type: "json",
-            data: { people: details, total: count, has_more: hasMore }
+            type: "text",
+            text: JSON.stringify({ people: details, total: count, has_more: hasMore }, null, 2)
           }]
         };
       }
@@ -149,7 +149,7 @@ const handler = createMcpHandler(
           return formatError('Person not found', `No person matches the provided identifier`, ['Check list_people for available people']);
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         const { data, error } = await supabase
           .from('people')
           .select('*, person_notes(*)')
@@ -188,7 +188,7 @@ const handler = createMcpHandler(
         slug: z.string().optional()
       },
       async ({ name, relation, tldr, slug }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('people')
@@ -230,7 +230,7 @@ const handler = createMcpHandler(
           return formatError('Person not found', 'No person matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const updateData: any = {};
         if (args.name !== undefined) updateData.name = args.name;
@@ -275,7 +275,7 @@ const handler = createMcpHandler(
           return formatError('Person not found', 'No person matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data: person } = await supabase
           .from('people')
@@ -320,7 +320,7 @@ const handler = createMcpHandler(
           return formatError('Person not found', 'No person matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('person_notes')
@@ -359,7 +359,7 @@ const handler = createMcpHandler(
           return formatError('Person not found', 'No person matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('person_notes')
@@ -386,8 +386,8 @@ const handler = createMcpHandler(
         
         return {
           content: [{
-            type: "json",
-            data: { notes }
+            type: "text",
+            text: JSON.stringify({ notes })
           }]
         };
       }
@@ -404,7 +404,7 @@ const handler = createMcpHandler(
         mode: z.enum(['meta', 'full']).default('meta')
       },
       async ({ limit, offset, mode }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error, count } = await supabase
           .from('projects')
@@ -458,8 +458,8 @@ const handler = createMcpHandler(
         
         return {
           content: [{
-            type: "json",
-            data: { projects: details, total: count, has_more: hasMore }
+            type: "text",
+            text: JSON.stringify({ projects: details, total: count, has_more: hasMore }, null, 2)
           }]
         };
       }
@@ -484,7 +484,7 @@ const handler = createMcpHandler(
           return formatError('Project not found', 'No project matches the provided identifier', ['Check list_projects for available projects']);
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('projects')
@@ -543,7 +543,7 @@ const handler = createMcpHandler(
         slug: z.string().optional()
       },
       async ({ name, tldr, slug }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('projects')
@@ -584,7 +584,7 @@ const handler = createMcpHandler(
           return formatError('Project not found', 'No project matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const updateData: any = {};
         if (args.name !== undefined) updateData.name = args.name;
@@ -628,7 +628,7 @@ const handler = createMcpHandler(
           return formatError('Project not found', 'No project matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data: project } = await supabase
           .from('projects')
@@ -673,7 +673,7 @@ const handler = createMcpHandler(
           return formatError('Project not found', 'No project matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('project_notes')
@@ -712,7 +712,7 @@ const handler = createMcpHandler(
           return formatError('Project not found', 'No project matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('project_notes')
@@ -739,8 +739,8 @@ const handler = createMcpHandler(
         
         return {
           content: [{
-            type: "json",
-            data: { notes }
+            type: "text",
+            text: JSON.stringify({ notes })
           }]
         };
       }
@@ -755,7 +755,7 @@ const handler = createMcpHandler(
         tags: z.array(z.string()).optional()
       },
       async ({ title, content, tags }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data: defaultProject } = await supabase
           .from('projects')
@@ -799,7 +799,7 @@ const handler = createMcpHandler(
         mode: z.enum(['meta', 'full']).default('meta')
       },
       async (args) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         let projectId: string | undefined;
         if (args.project_id || args.project_name || args.project_slug) {
@@ -865,8 +865,8 @@ const handler = createMcpHandler(
         
         return {
           content: [{
-            type: "json",
-            data: { sprints: details, total: count, has_more: hasMore }
+            type: "text",
+            text: JSON.stringify({ sprints: details, total: count, has_more: hasMore }, null, 2)
           }]
         };
       }
@@ -905,7 +905,7 @@ const handler = createMcpHandler(
           return formatError('Sprint not found', 'No sprint matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('sprints')
@@ -974,7 +974,7 @@ const handler = createMcpHandler(
           return formatError('Project not found', 'No project matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('sprints')
@@ -1022,7 +1022,7 @@ const handler = createMcpHandler(
           return formatError('Sprint not found', 'No sprint matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const updateData: any = {};
         if (args.name !== undefined) updateData.name = args.name;
@@ -1067,7 +1067,7 @@ const handler = createMcpHandler(
           return formatError('Sprint not found', 'No sprint matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data: sprint } = await supabase
           .from('sprints')
@@ -1108,7 +1108,7 @@ const handler = createMcpHandler(
           return formatError('Sprint not found', 'No sprint matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('sprint_notes')
@@ -1144,7 +1144,7 @@ const handler = createMcpHandler(
         mode: z.enum(['meta', 'full']).default('meta')
       },
       async (args) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         let query = supabase
           .from('tasks')
@@ -1227,8 +1227,8 @@ const handler = createMcpHandler(
         
         return {
           content: [{
-            type: "json",
-            data: { tasks: details, total: count, has_more: hasMore }
+            type: "text",
+            text: JSON.stringify({ tasks: details, total: count, has_more: hasMore }, null, 2)
           }]
         };
       }
@@ -1242,7 +1242,7 @@ const handler = createMcpHandler(
         task_title: z.string().optional()
       },
       async (args) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         let query = supabase
           .from('tasks')
@@ -1311,7 +1311,7 @@ const handler = createMcpHandler(
           return formatError('Sprint not found', 'No sprint matches the provided identifier');
         }
         
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const priorityMap = { low: 1, medium: 3, high: 5 };
         
@@ -1345,7 +1345,7 @@ const handler = createMcpHandler(
         priority: z.enum(['low', 'medium', 'high']).optional()
       },
       async (args) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         let taskId: string;
         if (args.task_id) {
@@ -1401,7 +1401,7 @@ const handler = createMcpHandler(
         task_title: z.string().optional()
       },
       async (args) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         let taskId: string;
         let taskTitle: string = 'Unknown';
@@ -1450,7 +1450,7 @@ const handler = createMcpHandler(
         note_type: z.enum(['person', 'project', 'sprint']).optional()
       },
       async ({ note_id, note_type }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const checkTables = note_type 
           ? [{ table: `${note_type}_notes`, type: note_type }]
@@ -1496,7 +1496,7 @@ const handler = createMcpHandler(
         tags: z.array(z.string()).optional()
       },
       async ({ note_id, note_type, title, content, tags }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const updateData: any = {};
         if (title !== undefined) updateData.title = title;
@@ -1536,7 +1536,7 @@ const handler = createMcpHandler(
         note_type: z.enum(['person', 'project', 'sprint']).optional()
       },
       async ({ note_id, note_type }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const checkTables = note_type 
           ? [{ table: `${note_type}_notes`, type: note_type }]
@@ -1579,7 +1579,7 @@ const handler = createMcpHandler(
         mode: z.enum(['meta', 'full']).default('meta')
       },
       async ({ note_type, limit, tags, mode }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const results = [];
         
@@ -1634,8 +1634,8 @@ const handler = createMcpHandler(
         
         return {
           content: [{
-            type: "json",
-            data: { notes: limitedResults }
+            type: "text",
+            text: JSON.stringify({ notes: limitedResults }, null, 2)
           }]
         };
       }
@@ -1650,7 +1650,7 @@ const handler = createMcpHandler(
         limit: z.number().default(20)
       },
       async ({ query, note_type, limit }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const searchPattern = `%${query}%`;
         const results = [];
@@ -1723,7 +1723,7 @@ const handler = createMcpHandler(
         mode: z.enum(['meta', 'full']).default('meta')
       },
       async ({ tags, limit, offset, mode }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         let query = supabase.from('memory').select('*', { count: 'exact' });
         
@@ -1756,8 +1756,8 @@ const handler = createMcpHandler(
         
         return {
           content: [{
-            type: "json",
-            data: { memories, total: count, has_more: hasMore }
+            type: "text",
+            text: JSON.stringify({ memories, total: count, has_more: hasMore }, null, 2)
           }]
         };
       }
@@ -1771,7 +1771,7 @@ const handler = createMcpHandler(
         memory_title: z.string().optional()
       },
       async (args) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         let query = supabase.from('memory').select('*');
         
@@ -1812,7 +1812,7 @@ const handler = createMcpHandler(
         tags: z.array(z.string()).optional()
       },
       async ({ title, content, tags }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data, error } = await supabase
           .from('memory')
@@ -1841,7 +1841,7 @@ const handler = createMcpHandler(
         tags: z.array(z.string()).optional()
       },
       async (args) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         let memoryId: string;
         if (args.memory_id) {
@@ -1886,7 +1886,7 @@ const handler = createMcpHandler(
         memory_title: z.string().optional()
       },
       async (args) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         let memoryId: string;
         let memoryTitle: string = 'Unknown';
@@ -1938,7 +1938,7 @@ const handler = createMcpHandler(
         mode: z.enum(['meta', 'full']).default('meta')
       },
       async ({ include, exclude, entity_type, limit, mode }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const results = [];
         
@@ -2005,8 +2005,8 @@ const handler = createMcpHandler(
         const limitedResults = results.slice(0, limit);
         
         if (mode === 'meta') {
-          const text = limitedResults.map(item => {
-            const parentInfo = item.parent_name ? ` (${item.parent_name})` : '';
+          const text = limitedResults.map((item: any) => {
+            const parentInfo = (item as any).parent_name ? ` (${(item as any).parent_name})` : '';
             return `• ${item.title} [${item.type}]${parentInfo}\n  ID: ${item.id}\n  Tags: ${item.tags?.join(', ') || 'none'}`;
           }).join('\n\n');
           
@@ -2020,8 +2020,8 @@ const handler = createMcpHandler(
         
         return {
           content: [{
-            type: "json",
-            data: { results: limitedResults }
+            type: "text",
+            text: JSON.stringify({ results: limitedResults }, null, 2)
           }]
         };
       }
@@ -2036,7 +2036,7 @@ const handler = createMcpHandler(
         mode: z.enum(['meta', 'full']).default('full')
       },
       async ({ entity_type, ids, mode }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         if (ids.length === 0) {
           return formatError('Invalid parameters', 'At least one ID is required');
@@ -2100,8 +2100,8 @@ const handler = createMcpHandler(
         
         return {
           content: [{
-            type: "json",
-            data: { [entity_type]: items }
+            type: "text",
+            text: JSON.stringify({ [entity_type]: items }, null, 2)
           }]
         };
       }
@@ -2112,7 +2112,7 @@ const handler = createMcpHandler(
       'Get system overview and statistics',
       {},
       async () => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const [
           { data: customInstructions },
@@ -2183,7 +2183,7 @@ const handler = createMcpHandler(
         mcp_context_instructions: z.string().optional()
       },
       async ({ behavior_description, mcp_context_instructions }) => {
-        const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../../lib/supabase');
         
         const { data: primaryUser } = await supabase
           .from('people')
