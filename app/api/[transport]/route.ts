@@ -46,7 +46,8 @@ function safeCount(countObj: any): number {
   return countObj?.[0]?.count || 0;
 }
 
-const handler = createMcpHandler(
+// Create the MCP handler
+const mcpHandler = createMcpHandler(
   (server) => {
     // Tool 1: get_manifest - Complete system overview with all IDs
     server.tool(
@@ -1089,8 +1090,41 @@ const handler = createMcpHandler(
       }
     );
   },
-  {},
-  { basePath: '/api' }
+  {
+    // Server options for improved compatibility
+  },
+  { 
+    basePath: '/api',
+    verboseLogs: true,  // Enable debug logs
+    maxDuration: 60     // Increase timeout for Claude Online
+  }
 );
 
-export { handler as GET, handler as POST, handler as DELETE };
+// 🚀 Claude Online Compatibility Wrapper
+// Fixes the Accept header issue between Claude Online and @vercel/mcp-adapter
+async function compatibilityWrapper(request: Request) {
+  const acceptHeader = request.headers.get('accept') || '';
+  
+  // If missing text/event-stream, add it for @vercel/mcp-adapter compatibility
+  if (acceptHeader.includes('application/json') && !acceptHeader.includes('text/event-stream')) {
+    const modifiedHeaders = new Headers(request.headers);
+    modifiedHeaders.set('accept', 'application/json, text/event-stream');
+    
+    const modifiedRequest = new Request(request.url, {
+      method: request.method,
+      headers: modifiedHeaders,
+      body: request.body
+    } as RequestInit);
+    
+    return mcpHandler(modifiedRequest);
+  }
+  
+  // If headers are already correct, pass through
+  return mcpHandler(request);
+}
+
+export { 
+  compatibilityWrapper as GET, 
+  compatibilityWrapper as POST, 
+  compatibilityWrapper as DELETE 
+};
