@@ -1,34 +1,18 @@
 {
   "mcpServers": {
     "neural-system": {
-      "command": "node",
+      "command": "npx",
       "args": [
-        "/Users/marcofernandes/.nvm/versions/node/v18.19.0/bin/mcp-remote",
+        "mcp-remote",
         "https://cognitiveoverflow.vercel.app/api/mcp"
-      ],
-      "env": {
-        "NEURAL_ACCESS_TOKEN": "neural_access_2024"
-      }
-    },
-    "neural-system-backup": {
-      "command": "node", 
-      "args": [
-        "/Users/marcofernandes/.nvm/versions/node/v18.19.0/bin/mcp-remote",
-        "https://cognitiveoverflow.vercel.app/api/mcp"
-      ],
-      "env": {
-        "NEURAL_ACCESS_TOKEN": "neural_access_2024"
-      }
+      ]
     },
     "neural-system-local": {
-      "command": "node",
+      "command": "npx",
       "args": [
-        "/Users/marcofernandes/.nvm/versions/node/v18.19.0/bin/mcp-remote",
+        "mcp-remote",
         "http://localhost:3000/api/mcp"
-      ],
-      "env": {
-        "NEURAL_ACCESS_TOKEN": "neural_access_2024"
-      }
+      ]
     }
   }
-} 
+}

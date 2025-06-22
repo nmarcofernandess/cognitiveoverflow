@@ -86,7 +86,6 @@ erDiagram
         VARCHAR name
         VARCHAR relation
         TEXT tldr
-        VARCHAR slug "UNIQUE, optional"
         BOOLEAN is_primary_user
         TIMESTAMP created_at
         TIMESTAMP updated_at
@@ -105,7 +104,6 @@ erDiagram
         UUID id PK
         VARCHAR name
         TEXT tldr
-        VARCHAR slug "UNIQUE, optional"
         BOOLEAN is_default_project
         BOOLEAN is_protected
         TIMESTAMP created_at
@@ -126,7 +124,6 @@ erDiagram
         UUID project_id FK
         VARCHAR name
         TEXT tldr
-        VARCHAR slug "UNIQUE per project"
         VARCHAR status
         TIMESTAMP created_at
         TIMESTAMP updated_at
@@ -180,9 +177,9 @@ erDiagram
 
 ### **Key Updates v2.1:**
 - ✅ **`project_notes`** table para notas diretas nos projetos (sem necessidade de sprint)
-- ✅ **`slug`** fields opcionais para URLs amigáveis e referências por nome
+- ✅ **ID-only model** - sistema migrado para usar apenas IDs, slugs removidos por segurança
 - ✅ **`is_protected`** flag em projects ("Conhecimento Geral" não pode ser deletado)
-- ✅ **Índices únicos** em slugs para performance e constraint enforcement
+- ✅ **Queries robustas** com error handling aprimorado e modelo ID-only
 - ✅ **Cascade deletes** configurados (deletar projeto → remove sprints → remove tasks/notes)
 
 **Memory System**: Memórias permanecem unificadas numa tabela. Search por tags, bulk get por IDs, navegação contextual via UI.
@@ -484,70 +481,45 @@ async function handleListPeople(args: { relation?, limit? }) {
 
 ---
 
-## 🛠️ **FERRAMENTAS DISPONÍVEIS (30 TOTAL)**
+## 🛠️ **FERRAMENTAS DISPONÍVEIS (10 UNIVERSAL TOOLS)**
 
-### 👥 People Management (6 tools)
-- `list_people(relation?, search?, limit?)` - Lista pessoas com filtros
-- `get_person(id?, name?)` - Detalhes + notes count *(fallback: name→id)*
-- `create_person(name, relation, tldr?)` - Criar pessoa
-- `update_person(id?, name?, relation?, tldr?)` - Atualizar pessoa *(id ou name)*
-- `delete_person(id?, name?)` - Deletar pessoa *(exceto Marco)*
-- `create_person_note(person_id?, person_name?, title, content, tags?)` - Nota em pessoa
+### 🧠 Core System (1 tool)
+- `get_manifest()` - **[readOnly]** Sistema overview completo com todas as entidades, IDs, counts e metadata
 
-### 📁 Project Management (9 tools)
-- `list_projects(limit?)` - Lista projetos + sprints count + notes count
-- `get_project(id?, name?)` - Projeto + sprints + project_notes *(fallback: name→id)*
-- `create_project(name, tldr?)` - Criar projeto novo
-- `update_project(id?, name?, tldr?)` - Atualizar projeto *(id ou name)*
-- `delete_project(id?, name?)` - Deletar projeto *(exceto "Conhecimento Geral")*
-- `create_project_note(project_id?, project_name?, title, content, tags?)` - Nota direta no projeto
-- `update_project_note(note_id, title?, content?, tags?)` - Editar nota do projeto
-- `delete_project_note(note_id)` - Deletar nota do projeto
-- `create_knowledge_note(title, content, tags?)` - Shortcut para "Conhecimento Geral"
+### 🔧 Universal CRUD (4 tools)
+- `get(entity_type, id)` - **[readOnly]** Buscar qualquer entidade por tipo e ID
+- `create(entity_type, data)` - **[idempotent]** Criar pessoa, projeto, sprint, task, memory ou note
+- `update(entity_type, id, data)` - **[idempotent]** Atualizar qualquer entidade por ID
+- `delete(entity_type, id)` - **[destructive]** Deletar qualquer entidade (respeitando proteções)
 
-### 🏃 Sprint Management (4 tools)
-- `create_sprint(project_id?, project_name?, name, tldr?, status?)` - Criar sprint
-- `get_sprint(id?, name?, project_name?)` - Sprint + tasks + notes *(fallback)*
-- `update_sprint(id?, name?, tldr?, status?)` - Atualizar sprint
-- `delete_sprint(id?, name?)` - Deletar sprint + cascade tasks/notes
+### 📊 Advanced Queries (3 tools)
+- `search(entity_type, filters?)` - **[readOnly]** Busca avançada com filtros específicos por tipo
+- `list_tasks(filters?)` - **[readOnly]** Lista tasks com filtros por projeto, sprint, status
+- `get_related_entities(from_type, from_id, to_type)` - **[readOnly]** Navegação hierárquica (projeto→sprints, sprint→tasks/parent, any→notes)
 
-### ✅ Task Management (4 tools)
-- `create_task(sprint_id?, sprint_name?, title, description?, priority?)` - Criar task
-- `get_task(id?, title?)` - Detalhes da task *(fallback: title→id)*
-- `update_task(id?, title?, description?, status?, priority?)` - Atualizar task
-- `delete_task(id?, title?)` - Deletar task
+### 🎯 Shortcuts & Config (2 tools)
+- `create_knowledge_note(title, content, tags?)` - **[idempotent]** Shortcut para criar nota no projeto "Conhecimento Geral"
+- `update_instructions(behavior?, mcp_context?)` - **[idempotent]** Atualizar persona da IA e instruções MCP
 
-### 📝 Notes Management (6 tools)
-- `create_sprint_note(sprint_id?, sprint_name?, title, content, tags?)` - Nota em sprint
-- `update_sprint_note(note_id, title?, content?, tags?)` - Editar nota de sprint
-- `delete_sprint_note(note_id)` - Deletar nota de sprint
-- `update_note(note_id, title?, content?, tags?)` - Editar qualquer nota *(universal)*
-- `delete_note(note_id)` - Deletar qualquer nota *(universal)*
-- `get_note(note_id)` - Get nota específica *(person/project/sprint)*
-
-### 🧠 Memory Management (3 tools)
-- `list_memory(limit?)` - Lista título + tags de todas as memórias
-- `get_memory(id?, title?)` - Conteúdo completo de memória *(fallback)*
-- `search_by_tags(include?, exclude?, mode?)` - Search por tags (meta/full)
-
-### 🔍 Search & Bulk (2 tools)
-- `bulk_get(ids, type)` - Carrega múltiplos objetos de uma vez *(people/projects/sprints/tasks/memory)*
-- `get_manifest()` - Metadata completa do sistema + content_index
-
-### ⚙️ Custom Instructions (1 tool)
-- `get_custom_instructions()` - Config da IA + usuário principal + instruções MCP
+### **Entity Types Suportados:**
+- `person`, `project`, `sprint`, `task`, `memory`, `note`
+- **Proteções**: Marco (pessoa principal), Conhecimento Geral (projeto padrão)
+- **Cascade**: Deletar projeto → remove sprints → remove tasks/notes
 
 ---
 
-### **Padrões de Nome vs ID (Fallback Inteligente)**
+### **Padrões ID-Only (Segurança Máxima)**
 ```typescript
-// Preferência: usar nomes (mais legível)
-create_sprint({ project_name: "DietFlow", name: "MVP Launch", tldr: "..." })
+// 1. Get manifest primeiro para descobrir IDs
+get_manifest()
 
-// Fallback: se nome ambíguo ou não encontrado, usar ID
-get_project({ id: "uuid-123-456" })
+// 2. Usar IDs diretos para todas as operações
+create({ entity_type: "sprint", data: { name: "MVP Launch", project_id: "uuid-123", tldr: "..." }})
 
-// Erro típico: 404 não encontrado, 409 nome duplicado
+// 3. Get entities específicas por ID
+get({ entity_type: "project", id: "uuid-123-456" })
+
+// Erro típico: 404 não encontrado, 409 constraint violation
 ```
 
 ### **Convenções de Resposta**
@@ -565,51 +537,68 @@ get_project({ id: "uuid-123-456" })
 ```
 🤖 Claude: "Preciso criar uma nota sobre Machine Learning no projeto DietFlow"
 
-👤 Marco: create_project_note({
-  project_name: "DietFlow",
-  title: "ML para Recomendações",
-  content: "Usar TensorFlow para sugestões personalizadas...",
-  tags: ["ml", "tech", "mvp"]
+// 1. First get manifest to find DietFlow project ID
+👤 Marco: get_manifest()
+// Returns: { projects: [{ id: "proj-123", name: "DietFlow", ... }] }
+
+// 2. Create note using ID
+👤 Marco: create({
+  entity_type: "note",
+  data: {
+    parent_type: "project",
+    parent_id: "proj-123",
+    title: "ML para Recomendações",
+    content: "Usar TensorFlow para sugestões personalizadas...",
+    tags: ["ml", "tech", "mvp"]
+  }
 })
 
-✅ Response: "Project note created in DietFlow: ML para Recomendações"
+✅ Response: "Created note: ML para Recomendações"
 ```
 
-### **Search & Bulk Operations**
+### **Advanced Search & Navigation**
 
 ```javascript
-// 1. Search por tags para encontrar memórias relevantes
-search_by_tags({ include: ["ai", "tech"], mode: "meta" })
-// Returns: list of memory IDs with matching tags
+// 1. Search memories by filters
+search({ entity_type: "memory", filters: { tags: ["ai", "tech"] }})
+// Returns: matching memories with full content
 
-// 2. Bulk get para carregar conteúdo completo
-bulk_get({ ids: ["mem1", "mem2", "mem3"], type: "memory" })
-// Returns: full content of all 3 memories in one call
+// 2. Navigate hierarchically
+get_related_entities({ from_type: "project", from_id: "proj-123", to_type: "sprints" })
+// Returns: all sprints for the project
+
+// 3. List filtered tasks
+list_tasks({ project_ids: ["proj-123"], status: "in_progress" })
+// Returns: active tasks for specific project
 ```
 
 ### **Error Handling Examples**
 
 ```
-❌ get_person({ name: "João" })
-→ "❌ Person not found: João. Did you mean: José (pai)?"
+❌ get({ entity_type: "person", id: "invalid-id" })
+→ "❌ person not found: No person with ID invalid-id"
 
-❌ create_project({ name: "DietFlow" })
-→ "❌ Project already exists: DietFlow (409 conflict)"
+❌ create({ entity_type: "project", data: { name: "DietFlow" }})
+→ "❌ Error creating project: duplicate key value violates unique constraint"
 
-⚠️ delete_project({ name: "Conhecimento Geral" })
+⚠️ delete({ entity_type: "project", id: "conhecimento-geral-id" })
 → "⚠️ Cannot delete protected project: Conhecimento Geral"
 ```
 
-### **Smart Fallbacks in Action**
+### **ID-Only Safety in Action**
 
 ```typescript
-// Scenario: Ambiguous name
-get_sprint({ name: "MVP", project_name: "DietFlow" })
-// Context helps disambiguate
+// Step 1: Always get manifest first
+get_manifest()
+// Discover all available IDs and entity relationships
 
-// Scenario: Name not found, fallback to ID
-get_project({ name: "NonExistent" })
-// Returns 404, then use: get_project({ id: "uuid-123" })
+// Step 2: Use exact IDs for operations
+get({ entity_type: "project", id: "proj-uuid-123" })
+// No ambiguity, no fallbacks needed
+
+// Step 3: Navigate relationships via IDs
+get_related_entities({ from_type: "project", from_id: "proj-uuid-123", to_type: "sprints" })
+// Clear hierarchical navigation
 ```
 
 ---
@@ -618,16 +607,16 @@ get_project({ name: "NonExistent" })
 
 ### ✅ **Implemented (Current)**
 - [x] Handler unificado (Frontend + MCP no mesmo repo)
-- [x] 30 MCP tools com fallback name→id
+- [x] 10 Universal MCP tools com ID-only model
 - [x] Project notes diretas (sem necessidade de sprint)
 - [x] Proteção de entidades ("Marco", "Conhecimento Geral")
-- [x] Manifest v2.0 com content_index
-- [x] Search by tags + bulk operations
+- [x] Manifest v2.0 com content_index completo
+- [x] Advanced search + hierarchical navigation
 - [x] Cascade deletes (project→sprints→tasks/notes)
 - [x] Error handling padronizado (✅❌⚠️)
+- [x] ID-only model - sistema 100% seguro sem slugs
 
 ### 🔄 **In Progress**
-- [ ] Slug-based URLs (`/neural/projects/dietflow`)
 - [ ] Real-time sync entre Frontend e MCP calls
 - [ ] Advanced search (full-text, date ranges)
 
@@ -643,11 +632,11 @@ get_project({ name: "NonExistent" })
 ## 🎯 **GETTING STARTED - Quick Commands**
 
 ```bash
-# 1. Ver overview do sistema
+# 1. Ver overview completo do sistema (SEMPRE PRIMEIRO)
 get_manifest()
 
-# 2. Listar projetos ativos
-list_projects({ limit: 10 })
+# 2. Buscar projetos com filtros
+search({ entity_type: "project", filters: { limit: 10 }})
 
 # 3. Adicionar nota rápida no Knowledge
 create_knowledge_note({
@@ -657,10 +646,13 @@ create_knowledge_note({
 })
 
 # 4. Buscar memórias técnicas
-search_by_tags({ include: ["tech"], mode: "full" })
+search({ entity_type: "memory", filters: { tags: ["tech"] }})
 
-# 5. Ver detalhes de pessoa específica
-get_person({ name: "Marco" })
+# 5. Ver detalhes de entidade específica (use ID do manifest)
+get({ entity_type: "person", id: "marco-uuid-from-manifest" })
+
+# 6. Navegar hierarquicamente
+get_related_entities({ from_type: "project", from_id: "proj-id", to_type: "sprints" })
 ```
 
 **Happy Neural System Navigation! 🧠⚡**

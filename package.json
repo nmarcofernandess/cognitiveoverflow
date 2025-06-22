@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --fix",
-    "mcp": "DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector@latest http://localhost:3000",
+    "mcp": "DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector@latest http://localhost:3000/api/mcp",
     "test": "mocha tests/mcp-integration.test.js --timeout 30000",
     "test:integration": "mocha tests/mcp-integration.test.js --timeout 60000 --reporter spec",
     "test:performance": "node tests/performance-benchmark.js",

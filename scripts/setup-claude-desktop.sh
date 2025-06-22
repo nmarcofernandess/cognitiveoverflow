@@ -27,14 +27,14 @@ echo "📁 Diretório config: $CLAUDE_CONFIG_DIR"
 mkdir -p "$CLAUDE_CONFIG_DIR"
 
 # Backup do config existente
-if [ -f "$CLAUDE_CONFIG_DIR/config.json" ]; then
+if [ -f "$CLAUDE_CONFIG_DIR/claude_desktop_config.json" ]; then
     echo "💾 Fazendo backup do config existente..."
-    cp "$CLAUDE_CONFIG_DIR/config.json" "$CLAUDE_CONFIG_DIR/config.json.backup.$(date +%Y%m%d_%H%M%S)"
+    cp "$CLAUDE_CONFIG_DIR/claude_desktop_config.json" "$CLAUDE_CONFIG_DIR/claude_desktop_config.json.backup.$(date +%Y%m%d_%H%M%S)"
 fi
 
 # Copiar nova configuração
 echo "📝 Instalando configuração Neural System..."
-cat > "$CLAUDE_CONFIG_DIR/config.json" << 'EOF'
+cat > "$CLAUDE_CONFIG_DIR/claude_desktop_config.json" << 'EOF'
 {
   "mcpServers": {
     "neural-system": {
@@ -45,10 +45,10 @@ cat > "$CLAUDE_CONFIG_DIR/config.json" << 'EOF'
       ]
     },
     "neural-system-local": {
-      "command": "npx", 
+      "command": "npx",
       "args": [
         "mcp-remote",
-        "http://localhost:3000/api/mcp-server?token=neural_access_2024"
+        "http://localhost:3000/api/mcp"
       ]
     }
   }
@@ -67,11 +67,10 @@ echo "   npm run dev"
 echo "   (usa neural-system-local automaticamente)"
 echo ""
 
-# Verificar se mcp-remote está instalado
-if ! command -v npx mcp-remote &> /dev/null; then
-    echo "⚠️  mcp-remote não encontrado. Instalando..."
-    npm install -g mcp-remote
-    echo "✅ mcp-remote instalado"
+# Verificar se mcp-remote está disponível via npx
+if ! command -v npx &> /dev/null; then
+    echo "⚠️  npx não encontrado. Instale Node.js primeiro."
+    exit 1
 fi
 
 echo "🎯 Setup completo! Marco, reinicia o Claude Desktop." 
