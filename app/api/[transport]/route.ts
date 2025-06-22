@@ -1091,7 +1091,7 @@ const mcpHandler = createMcpHandler(
     );
   },
   {
-    // Server options for improved compatibility
+    // Server options
   },
   { 
     basePath: '/api',
@@ -1100,12 +1100,15 @@ const mcpHandler = createMcpHandler(
   }
 );
 
-// 🚀 Claude Online Compatibility Wrapper
-// Fixes the Accept header issue between Claude Online and @vercel/mcp-adapter
-async function compatibilityWrapper(request: Request) {
+
+
+// 🚀 Claude Online Compatibility Fix
+// The @vercel/mcp-adapter v0.11.1 has a bug: it requires both headers even for Streamable HTTP
+// This wrapper fixes the Accept header issue between Claude Online and the adapter
+async function compatibilityHandler(request: Request) {
   const acceptHeader = request.headers.get('accept') || '';
   
-  // If missing text/event-stream, add it for @vercel/mcp-adapter compatibility
+  // If Claude Online sends only 'application/json', add 'text/event-stream' for adapter compatibility
   if (acceptHeader.includes('application/json') && !acceptHeader.includes('text/event-stream')) {
     const modifiedHeaders = new Headers(request.headers);
     modifiedHeaders.set('accept', 'application/json, text/event-stream');
@@ -1119,12 +1122,8 @@ async function compatibilityWrapper(request: Request) {
     return mcpHandler(modifiedRequest);
   }
   
-  // If headers are already correct, pass through
+  // If headers are already correct (Claude Desktop), pass through
   return mcpHandler(request);
 }
 
-export { 
-  compatibilityWrapper as GET, 
-  compatibilityWrapper as POST, 
-  compatibilityWrapper as DELETE 
-};
+export { compatibilityHandler as GET, compatibilityHandler as POST, compatibilityHandler as DELETE };
