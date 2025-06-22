@@ -46,8 +46,7 @@ function safeCount(countObj: any): number {
   return countObj?.[0]?.count || 0;
 }
 
-// Create the MCP handler
-const mcpHandler = createMcpHandler(
+const handler = createMcpHandler(
   (server) => {
     // Tool 1: get_manifest - Complete system overview with all IDs
     server.tool(
@@ -1090,37 +1089,8 @@ const mcpHandler = createMcpHandler(
       }
     );
   },
-  {
-    // Server options
-  },
-  { 
-    basePath: '/api',
-    verboseLogs: true,  // Enable debug logs
-    maxDuration: 60     // Increase timeout for Claude Online
-  }
+  {},
+  { basePath: '/api' }
 );
 
-
-
-// 🚀 Claude Online Compatibility Fix  
-// @vercel/mcp-adapter v0.11.1 bug: requires SSE headers even for Streamable HTTP POST
-async function compatibilityHandler(request: Request) {
-  const acceptHeader = request.headers.get('accept') || '';
-  
-  // Claude Online fix: add missing text/event-stream header
-  if (acceptHeader.includes('application/json') && !acceptHeader.includes('text/event-stream')) {
-    // Clone headers and add the missing one
-    const headers = new Headers(request.headers);
-    headers.set('accept', 'application/json, text/event-stream');
-    
-    // Create new request with fixed headers
-    const modifiedRequest = new Request(request, { headers });
-    
-    return mcpHandler(modifiedRequest);
-  }
-  
-  // Headers already correct (Claude Desktop) - pass through
-  return mcpHandler(request);
-}
-
-export { compatibilityHandler as GET, compatibilityHandler as POST, compatibilityHandler as DELETE };
+export { handler as GET, handler as POST, handler as DELETE };
