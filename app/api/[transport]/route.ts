@@ -1102,27 +1102,24 @@ const mcpHandler = createMcpHandler(
 
 
 
-// 🚀 Claude Online Compatibility Fix
-// The @vercel/mcp-adapter v0.11.1 has a bug: it requires both headers even for Streamable HTTP
-// This wrapper fixes the Accept header issue between Claude Online and the adapter
+// 🚀 Claude Online Compatibility Fix  
+// @vercel/mcp-adapter v0.11.1 bug: requires SSE headers even for Streamable HTTP POST
 async function compatibilityHandler(request: Request) {
   const acceptHeader = request.headers.get('accept') || '';
   
-  // If Claude Online sends only 'application/json', add 'text/event-stream' for adapter compatibility
+  // Claude Online fix: add missing text/event-stream header
   if (acceptHeader.includes('application/json') && !acceptHeader.includes('text/event-stream')) {
-    const modifiedHeaders = new Headers(request.headers);
-    modifiedHeaders.set('accept', 'application/json, text/event-stream');
+    // Clone headers and add the missing one
+    const headers = new Headers(request.headers);
+    headers.set('accept', 'application/json, text/event-stream');
     
-    const modifiedRequest = new Request(request.url, {
-      method: request.method,
-      headers: modifiedHeaders,
-      body: request.body
-    } as RequestInit);
+    // Create new request with fixed headers
+    const modifiedRequest = new Request(request, { headers });
     
     return mcpHandler(modifiedRequest);
   }
   
-  // If headers are already correct (Claude Desktop), pass through
+  // Headers already correct (Claude Desktop) - pass through
   return mcpHandler(request);
 }
 
