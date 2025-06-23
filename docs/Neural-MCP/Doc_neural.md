@@ -658,3 +658,47 @@ get_related_entities({ from_type: "project", from_id: "proj-id", to_type: "sprin
 **Happy Neural System Navigation! 🧠⚡**
 
 ---
+
+## 📡 **Teste com SDK - Por que não usamos**
+
+### **Situação Atual**
+Atualmente usamos **HTTP/Vercel** que funciona tanto online quanto em produção com `npm run dev`. O problema é que se o `npm run dev` não estiver rodando, o Claude Desktop dá mensagem de erro.
+
+### **Teste com SDK**
+Para evitar essa mensagem de erro quando não estivermos testando, experimentamos o **SDK** que starta sozinho, mas **não foi uma boa ideia** porque:
+
+- ✅ **SDK starta independente** (sem precisar do npm run dev)
+- ❌ **Estrutura diferente** - precisaríamos replicar todas as tools em 2 formatos
+- ❌ **Duplicação de código** - manter HTTP + STDIO seria trabalhoso
+- ❌ **Complexidade desnecessária** - para nossa situação atual
+
+### **Por Curiosidade: Como Seria o SDK**
+
+Se algum dia quisermos implementar SDK, aqui está o que precisaríamos:
+
+#### **1. Criar `lib/supabase.js` (não .ts)**
+O SDK precisa de arquivo `.js` puro com validação de env vars e createClient do Supabase.
+
+#### **2. Claude Desktop Configuration**
+Configurar dois servidores:
+- `neural-system-local` → HTTP via npx mcp-remote (atual)
+- `neural-stdio-test` → SDK via Node.js direto com --env-file
+
+#### **3. Arquivo SDK Server (.mjs)**
+Criar servidor com:
+- `Server` from `@modelcontextprotocol/sdk/server`
+- `StdioServerTransport` para comunicação
+- `ListToolsRequestSchema` e `CallToolRequestSchema` handlers
+- Importar `supabase.js` e replicar lógica das tools
+- Estrutura completamente diferente do Vercel adapter
+
+### **Conclusão**
+Mantemos o **HTTP/Vercel** atual porque:
+- ✅ Código unificado (Frontend + MCP no mesmo handler)
+- ✅ TypeScript nativo
+- ✅ Deploy automático na Vercel
+- ✅ Sem duplicação de tools
+
+O **SDK** funciona, mas criaria complexidade desnecessária. Para desenvolvimento, basta rodar `npm run dev` quando quisermos testar no Claude Desktop.
+
+---
