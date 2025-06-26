@@ -6,7 +6,7 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
-import { supabase } from './lib/supabase.js';
+import { supabase } from '../../lib/supabase.js';
 
 // Create server
 const server = new Server({

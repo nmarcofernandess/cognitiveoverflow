@@ -683,6 +683,16 @@ O SDK precisa de arquivo `.js` puro com validação de env vars e createClient d
 Configurar dois servidores:
 - `neural-system-local` → HTTP via npx mcp-remote (atual)
 - `neural-stdio-test` → SDK via Node.js direto com --env-file
+Exemplo: 
+```json
+"neural-stdio-test": {
+      "command": "/opt/homebrew/bin/node",
+      "args": [
+        "--env-file=/Users/marcofernandes/cognitiveoverflow/.env.local",
+        "/Users/marcofernandes/cognitiveoverflow/test-stdio-server.mjs"
+      ]
+    }
+```
 
 #### **3. Arquivo SDK Server (.mjs)**
 Criar servidor com:

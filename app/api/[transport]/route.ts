@@ -185,18 +185,20 @@ const handler = createMcpHandler(
       }
     );
 
-    // Tool 2: get - Universal get by entity type and ID
+    // Tool 2: get - Universal get by entity type and ID(s)
     server.tool(
       'get',
-      '[readOnly] Fetch a single entity by type and ID (from manifest). Returns all fields plus related notes, sprints or project context.',
+      '[readOnly] Fetch entity(s) by type and ID(s) (from manifest). Single ID returns detailed object, array of IDs returns bulk results. Returns all fields plus related notes, sprints or project context.',
       {
         entity_type: z.enum(ENTITY_TYPES),
-        id: z.string()
+        id: z.union([z.string(), z.array(z.string())])
       },
       async ({ entity_type, id }) => {
         const { supabase } = await import('../../../lib/supabase');
         
         try {
+          const isBulk = Array.isArray(id);
+          const ids = isBulk ? id : [id];
           let data: any;
           let error: any;
           
@@ -205,8 +207,7 @@ const handler = createMcpHandler(
               ({ data, error } = await supabase
                 .from('people')
                 .select('*, person_notes(*)')
-                .eq('id', id)
-                .single());
+                .in('id', ids));
               break;
               
             case 'project':
@@ -217,8 +218,7 @@ const handler = createMcpHandler(
                   sprints(id, name, status, tasks(count), sprint_notes(count)),
                   project_notes(*)
                 `)
-                .eq('id', id)
-                .single());
+                .in('id', ids));
               break;
               
             case 'sprint':
@@ -230,8 +230,7 @@ const handler = createMcpHandler(
                   tasks(*),
                   sprint_notes(*)
                 `)
-                .eq('id', id)
-                .single());
+                .in('id', ids));
               break;
               
             case 'task':
@@ -241,51 +240,94 @@ const handler = createMcpHandler(
                   *,
                   sprints!inner(name, projects!inner(name))
                 `)
-                .eq('id', id)
-                .single());
+                .in('id', ids));
               break;
               
             case 'memory':
               ({ data, error } = await supabase
                 .from('memory')
                 .select('*')
-                .eq('id', id)
-                .single());
+                .in('id', ids));
               break;
               
             case 'note':
+              data = [];
               for (const table of ['person_notes', 'project_notes', 'sprint_notes']) {
                 const result = await supabase
                   .from(table)
                   .select('*')
-                  .eq('id', id)
-                  .single();
+                  .in('id', ids);
                   
-                if (result.data) {
-                  data = { ...result.data, note_type: table.replace('_notes', '') };
-                  break;
+                if (result.data && result.data.length > 0) {
+                  const notesWithType = result.data.map(note => ({ 
+                    ...note, 
+                    note_type: table.replace('_notes', '') 
+                  }));
+                  data.push(...notesWithType);
                 }
               }
-              if (!data) error = { message: 'Note not found' };
+              if (data.length === 0) error = { message: 'No notes found' };
               break;
           }
           
-          if (error || !data) {
+          if (error || !data || (Array.isArray(data) && data.length === 0)) {
+            const notFoundIds = isBulk ? id : [id];
             return {
               content: [{
                 type: 'text',
-                text: `❌ ${entity_type} not found: No ${entity_type} with ID ${id}`
+                text: `❌ ${entity_type} not found: No ${entity_type}${isBulk ? 's' : ''} with ID${isBulk ? 's' : ''} ${notFoundIds.join(', ')}`
               }]
             };
           }
           
-          return {
-            content: [{
-              type: "text",
-              text: `**${entity_type.toUpperCase()} Details:**\n\n` +
-                    JSON.stringify({ entity_type, ...data }, null, 2)
-            }]
-          };
+          // Handle single vs bulk response
+          if (!isBulk) {
+            const singleResult = Array.isArray(data) ? data[0] : data;
+            if (!singleResult) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: `❌ ${entity_type} not found: No ${entity_type} with ID ${id}`
+                }]
+              };
+            }
+            return {
+              content: [{
+                type: "text",
+                text: `**${entity_type.toUpperCase()} Details:**\n\n` +
+                      JSON.stringify({ entity_type, ...singleResult }, null, 2)
+              }]
+            };
+          } else {
+            // Bulk response - check for partial results
+            const foundIds = data.map((item: any) => item.id);
+            const missingIds = ids.filter(reqId => !foundIds.includes(reqId));
+            
+            let responseText = `✅ Found ${data.length}/${ids.length} ${entity_type}${data.length !== 1 ? 's' : ''}:\n\n`;
+            
+            // Add summary for each found item
+            data.forEach((item: any, index: number) => {
+              const name = item.name || item.title || 'Unnamed';
+              responseText += `${index + 1}. **${name}** (${item.id})\n`;
+              if (item.person_notes?.length) responseText += `   - ${item.person_notes.length} notes\n`;
+              if (item.sprints?.length) responseText += `   - ${item.sprints.length} sprints\n`;
+              if (item.tasks?.length) responseText += `   - ${item.tasks.length} tasks\n`;
+              if (item.project_notes?.length) responseText += `   - ${item.project_notes.length} project notes\n`;
+              if (item.sprint_notes?.length) responseText += `   - ${item.sprint_notes.length} sprint notes\n`;
+              if (item.tags?.length) responseText += `   - Tags: ${item.tags.join(', ')}\n`;
+            });
+            
+            if (missingIds.length > 0) {
+              responseText += `\n⚠️ Not found: ${missingIds.join(', ')}`;
+            }
+            
+            return {
+              content: [{
+                type: "text",
+                text: responseText
+              }]
+            };
+          }
         } catch (error) {
           return {
             content: [{
@@ -597,141 +639,199 @@ const handler = createMcpHandler(
     // Tool 5: delete - Universal delete for any entity type
     server.tool(
       'delete',
-      '[destructive] Permanently delete an entity by ID (people, projects, sprints, tasks, memories, notes). Protected items (primary user, default project) are blocked.',
+      '[destructive] Permanently delete entity(s) by ID(s) (people, projects, sprints, tasks, memories, notes). Protected items (primary user, default project) are blocked. Supports bulk deletion with array of IDs.',
       {
         entity_type: z.enum(ENTITY_TYPES),
-        id: z.string()
+        id: z.union([z.string(), z.array(z.string())])
       },
       async ({ entity_type, id }) => {
-          const { supabase } = await import('../../../lib/supabase');
+        const { supabase } = await import('../../../lib/supabase');
         
         try {
+          const isBulk = Array.isArray(id);
+          const ids = isBulk ? id : [id];
           let table: string;
-          let name: string = 'Unknown';
+          const deletedItems: string[] = [];
+          const protectedItems: string[] = [];
+          const failedItems: string[] = [];
           
-          switch (entity_type) {
-            case 'person':
-              table = 'people';
-              const { data: person } = await supabase
-                .from(table)
-                .select('name, is_primary_user')
-                .eq('id', id)
-                .single();
-                
-              if (person?.is_primary_user) {
-                return {
-                  content: [{
-                    type: 'text',
-                    text: `⚠️ Cannot delete: Primary user "${person.name}" is protected`
-                  }]
-                };
-              }
-              name = person?.name || name;
-              break;
+          // Pre-validation for protected items
+          if (entity_type === 'person') {
+            table = 'people';
+            const { data: people } = await supabase
+              .from(table)
+              .select('id, name, is_primary_user')
+              .in('id', ids);
               
-            case 'project':
-              table = 'projects';
-              const { data: project } = await supabase
-                .from(table)
-                .select('name, is_protected')
-                .eq('id', id)
-                .single();
-                
-              if (project?.is_protected) {
-                return {
-                  content: [{
-                    type: 'text',
-                    text: `⚠️ Cannot delete: Project "${project.name}" is protected`
-                  }]
-                };
-              }
-              name = project?.name || name;
-              break;
-              
-            case 'sprint':
-              table = 'sprints';
-              const { data: sprint } = await supabase
-                .from(table)
-                .select('name')
-                .eq('id', id)
-                .single();
-              name = sprint?.name || name;
-              break;
-              
-            case 'task':
-              table = 'tasks';
-              const { data: task } = await supabase
-                .from(table)
-                .select('title')
-                .eq('id', id)
-                .single();
-              name = task?.title || name;
-              break;
-              
-            case 'memory':
-              table = 'memory';
-              const { data: memory } = await supabase
-                .from(table)
-                .select('title')
-                .eq('id', id)
-                .single();
-              name = memory?.title || name;
-              break;
-              
-            case 'note':
-              for (const noteTable of ['person_notes', 'project_notes', 'sprint_notes']) {
-                const check = await supabase
-                  .from(noteTable)
-                  .select('title')
-                  .eq('id', id)
-                  .single();
-                  
-                if (check.data) {
-                  table = noteTable;
-                  name = check.data.title || name;
-                  break;
+            if (people) {
+              for (const person of people) {
+                if (person.is_primary_user) {
+                  protectedItems.push(`${person.name} (primary user)`);
+                } else {
+                  deletedItems.push(person.name || person.id);
                 }
               }
-              if (!table!) {
+            }
+          } else if (entity_type === 'project') {
+            table = 'projects';
+            const { data: projects } = await supabase
+              .from(table)
+              .select('id, name, is_protected')
+              .in('id', ids);
+              
+            if (projects) {
+              for (const project of projects) {
+                if (project.is_protected) {
+                  protectedItems.push(`${project.name} (protected)`);
+                } else {
+                  deletedItems.push(project.name || project.id);
+                }
+              }
+            }
+          } else {
+            // For other entity types, get names/titles for better feedback
+            switch (entity_type) {
+              case 'sprint':
+                table = 'sprints';
+                const { data: sprints } = await supabase
+                  .from(table)
+                  .select('id, name')
+                  .in('id', ids);
+                if (sprints) deletedItems.push(...sprints.map(s => s.name || s.id));
+                break;
+                
+              case 'task':
+                table = 'tasks';
+                const { data: tasks } = await supabase
+                  .from(table)
+                  .select('id, title')
+                  .in('id', ids);
+                if (tasks) deletedItems.push(...tasks.map(t => t.title || t.id));
+                break;
+                
+              case 'memory':
+                table = 'memory';
+                const { data: memories } = await supabase
+                  .from(table)
+                  .select('id, title')
+                  .in('id', ids);
+                if (memories) deletedItems.push(...memories.map(m => m.title || m.id));
+                break;
+                
+              case 'note':
+                const noteResults: any[] = [];
+                for (const noteTable of ['person_notes', 'project_notes', 'sprint_notes']) {
+                  const result = await supabase
+                    .from(noteTable)
+                    .select('id, title')
+                    .in('id', ids);
+                    
+                  if (result.data && result.data.length > 0) {
+                    table = noteTable; // Use last found table for deletion
+                    noteResults.push(...result.data);
+                  }
+                }
+                if (noteResults.length > 0) {
+                  deletedItems.push(...noteResults.map(n => n.title || n.id));
+                } else if (!isBulk) {
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `❌ Note not found: No note with ID ${id}`
+                    }]
+                  };
+                }
+                break;
+                
+              default:
                 return {
                   content: [{
                     type: 'text',
-                    text: `❌ Note not found: No note with ID ${id}`
+                    text: `❌ Invalid entity type: ${entity_type}`
                   }]
                 };
-              }
-              break;
-              
-            default:
-              return {
-                content: [{
-                  type: 'text',
-                  text: `❌ Invalid entity type: ${entity_type}`
-                }]
-              };
+            }
           }
           
-          const { error } = await supabase
-            .from(table!)
-            .delete()
-            .eq('id', id);
-            
-          if (error) {
+          // If all items are protected, return early
+          if (protectedItems.length > 0 && deletedItems.length === 0) {
             return {
               content: [{
                 type: 'text',
-                text: `❌ Error deleting ${entity_type}: ${formatSupabaseError(error)}`
+                text: `⚠️ Cannot delete protected ${entity_type}${protectedItems.length > 1 ? 's' : ''}: ${protectedItems.join(', ')}`
               }]
             };
           }
           
+          // Perform deletion for non-protected items
+          if (deletedItems.length > 0) {
+            const allowedIds = ids.filter(reqId => {
+              // Filter out protected item IDs
+              if (entity_type === 'person') {
+                return !protectedItems.some(item => item.includes('primary user'));
+              } else if (entity_type === 'project') {
+                return !protectedItems.some(item => item.includes('protected'));
+              }
+              return true;
+            });
+            
+            if (entity_type === 'note') {
+              // Handle note deletion across multiple tables
+              let deletedCount = 0;
+              for (const noteTable of ['person_notes', 'project_notes', 'sprint_notes']) {
+                const { error } = await supabase
+                  .from(noteTable)
+                  .delete()
+                  .in('id', allowedIds);
+                  
+                if (!error) {
+                  // Count would require separate query, so we'll estimate based on success
+                  deletedCount += allowedIds.length;
+                }
+              }
+            } else {
+              const { error } = await supabase
+                .from(table!)
+                .delete()
+                .in('id', allowedIds);
+                
+              if (error) {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `❌ Error deleting ${entity_type}: ${formatSupabaseError(error)}`
+                  }]
+                };
+              }
+            }
+          }
+          
+          // Build response message
+          let responseText = '';
           const cascadeInfo = entity_type === 'project' ? ' (all sprints, tasks and notes deleted)' :
                             entity_type === 'sprint' ? ' (all tasks and notes deleted)' : '';
+          
+          if (deletedItems.length > 0) {
+            responseText = `✅ Deleted ${deletedItems.length} ${entity_type}${deletedItems.length > 1 ? 's' : ''}`;
+            if (!isBulk || deletedItems.length <= 3) {
+              responseText += `: ${deletedItems.join(', ')}`;
+            }
+            responseText += cascadeInfo;
+          }
+          
+          if (protectedItems.length > 0) {
+            if (responseText) responseText += '\n';
+            responseText += `⚠️ Skipped ${protectedItems.length} protected ${entity_type}${protectedItems.length > 1 ? 's' : ''}: ${protectedItems.join(', ')}`;
+          }
+          
+          if (!responseText) {
+            responseText = `❌ No ${entity_type}s found to delete with provided ID${isBulk ? 's' : ''}: ${ids.join(', ')}`;
+          }
           
           return {
             content: [{
               type: 'text',
-              text: `✅ Deleted ${entity_type}: ${name}${cascadeInfo}`
+              text: responseText
             }]
           };
         } catch (error) {
