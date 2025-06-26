@@ -3,6 +3,7 @@ import { Metadata, Viewport } from "next";
 import clsx from "clsx";
 
 import { Providers } from "./providers";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 import { siteConfig } from "@/config/site";
 import { fontSans } from "@/config/fonts";
@@ -39,7 +40,10 @@ export default function RootLayout({
           fontSans.variable,
         )}
       >
-        <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
+        <Providers themeProps={{ attribute: "class", defaultTheme: "system" }}>
+          <div className="fixed top-6 right-6 z-50">
+            <ThemeSwitcher />
+          </div>
           {children}
         </Providers>
       </body>
