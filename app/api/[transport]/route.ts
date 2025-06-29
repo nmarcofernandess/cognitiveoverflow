@@ -46,6 +46,11 @@ function safeCount(countObj: any): number {
   return countObj?.[0]?.count || 0;
 }
 
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 const handler = createMcpHandler(
   (server) => {
     // Tool 1: get_manifest - Complete system overview with all IDs
@@ -199,15 +204,30 @@ const handler = createMcpHandler(
         try {
           const isBulk = Array.isArray(id);
           const ids = isBulk ? id : [id];
+          
+          // Validate UUIDs and separate valid from invalid
+          const validIds = ids.filter(isValidUUID);
+          const invalidIds = ids.filter(id => !isValidUUID(id));
+          
           let data: any;
           let error: any;
+          
+          // If no valid IDs, return early
+          if (validIds.length === 0) {
+            return {
+              content: [{
+                type: 'text',
+                text: `❌ Invalid IDs: All provided IDs have invalid UUID format: ${invalidIds.join(', ')}`
+              }]
+            };
+          }
           
           switch (entity_type) {
             case 'person':
               ({ data, error } = await supabase
                 .from('people')
                 .select('*, person_notes(*)')
-                .in('id', ids));
+                .in('id', validIds));
               break;
               
             case 'project':
@@ -218,7 +238,7 @@ const handler = createMcpHandler(
                   sprints(id, name, status, tasks(count), sprint_notes(count)),
                   project_notes(*)
                 `)
-                .in('id', ids));
+                .in('id', validIds));
               break;
               
             case 'sprint':
@@ -230,7 +250,7 @@ const handler = createMcpHandler(
                   tasks(*),
                   sprint_notes(*)
                 `)
-                .in('id', ids));
+                .in('id', validIds));
               break;
               
             case 'task':
@@ -240,14 +260,14 @@ const handler = createMcpHandler(
                   *,
                   sprints!inner(name, projects!inner(name))
                 `)
-                .in('id', ids));
+                .in('id', validIds));
               break;
               
             case 'memory':
               ({ data, error } = await supabase
                 .from('memory')
                 .select('*')
-                .in('id', ids));
+                .in('id', validIds));
               break;
               
             case 'note':
@@ -256,7 +276,7 @@ const handler = createMcpHandler(
                 const result = await supabase
                   .from(table)
                   .select('*')
-                  .in('id', ids);
+                  .in('id', validIds);
                   
                 if (result.data && result.data.length > 0) {
                   const notesWithType = result.data.map(note => ({ 
@@ -270,12 +290,37 @@ const handler = createMcpHandler(
               break;
           }
           
-          if (error || !data || (Array.isArray(data) && data.length === 0)) {
+          if (error) {
+            const notFoundIds = isBulk ? id : [id];
+            return {
+              content: [{
+                type: 'text',
+                text: `❌ Error: ${formatSupabaseError(error)}`
+              }]
+            };
+          }
+          
+          if (!data) {
             const notFoundIds = isBulk ? id : [id];
             return {
               content: [{
                 type: 'text',
                 text: `❌ ${entity_type} not found: No ${entity_type}${isBulk ? 's' : ''} with ID${isBulk ? 's' : ''} ${notFoundIds.join(', ')}`
+              }]
+            };
+          }
+          
+          // Ensure data is array for bulk operations
+          if (!Array.isArray(data)) {
+            data = [data];
+          }
+          
+          // For bulk operations, handle empty results differently
+          if (isBulk && data.length === 0) {
+            return {
+              content: [{
+                type: 'text',
+                text: `❌ ${entity_type} not found: No ${entity_type}s found with IDs: ${ids.join(', ')}`
               }]
             };
           }
@@ -301,7 +346,7 @@ const handler = createMcpHandler(
           } else {
             // Bulk response - check for partial results
             const foundIds = data.map((item: any) => item.id);
-            const missingIds = ids.filter(reqId => !foundIds.includes(reqId));
+            const missingValidIds = validIds.filter(reqId => !foundIds.includes(reqId));
             
             let responseText = `✅ Found ${data.length}/${ids.length} ${entity_type}${data.length !== 1 ? 's' : ''}:\n\n`;
             
@@ -317,8 +362,14 @@ const handler = createMcpHandler(
               if (item.tags?.length) responseText += `   - Tags: ${item.tags.join(', ')}\n`;
             });
             
-            if (missingIds.length > 0) {
-              responseText += `\n⚠️ Not found: ${missingIds.join(', ')}`;
+            // Report missing valid IDs
+            if (missingValidIds.length > 0) {
+              responseText += `\n⚠️ Not found (valid UUIDs): ${missingValidIds.join(', ')}`;
+            }
+            
+            // Report invalid IDs  
+            if (invalidIds.length > 0) {
+              responseText += `\n❌ Invalid UUID format: ${invalidIds.join(', ')}`;
             }
             
             return {
@@ -650,6 +701,21 @@ const handler = createMcpHandler(
         try {
           const isBulk = Array.isArray(id);
           const ids = isBulk ? id : [id];
+          
+          // Validate UUIDs and separate valid from invalid
+          const validIds = ids.filter(isValidUUID);
+          const invalidIds = ids.filter(id => !isValidUUID(id));
+          
+          // If no valid IDs, return early
+          if (validIds.length === 0) {
+            return {
+              content: [{
+                type: 'text',
+                text: `❌ Invalid IDs: All provided IDs have invalid UUID format: ${invalidIds.join(', ')}`
+              }]
+            };
+          }
+          
           let table: string;
           const deletedItems: string[] = [];
           const protectedItems: string[] = [];
@@ -661,7 +727,7 @@ const handler = createMcpHandler(
             const { data: people } = await supabase
               .from(table)
               .select('id, name, is_primary_user')
-              .in('id', ids);
+              .in('id', validIds);
               
             if (people) {
               for (const person of people) {
@@ -677,7 +743,7 @@ const handler = createMcpHandler(
             const { data: projects } = await supabase
               .from(table)
               .select('id, name, is_protected')
-              .in('id', ids);
+              .in('id', validIds);
               
             if (projects) {
               for (const project of projects) {
@@ -696,7 +762,7 @@ const handler = createMcpHandler(
                 const { data: sprints } = await supabase
                   .from(table)
                   .select('id, name')
-                  .in('id', ids);
+                  .in('id', validIds);
                 if (sprints) deletedItems.push(...sprints.map(s => s.name || s.id));
                 break;
                 
@@ -705,7 +771,7 @@ const handler = createMcpHandler(
                 const { data: tasks } = await supabase
                   .from(table)
                   .select('id, title')
-                  .in('id', ids);
+                  .in('id', validIds);
                 if (tasks) deletedItems.push(...tasks.map(t => t.title || t.id));
                 break;
                 
@@ -714,7 +780,7 @@ const handler = createMcpHandler(
                 const { data: memories } = await supabase
                   .from(table)
                   .select('id, title')
-                  .in('id', ids);
+                  .in('id', validIds);
                 if (memories) deletedItems.push(...memories.map(m => m.title || m.id));
                 break;
                 
@@ -724,7 +790,7 @@ const handler = createMcpHandler(
                   const result = await supabase
                     .from(noteTable)
                     .select('id, title')
-                    .in('id', ids);
+                    .in('id', validIds);
                     
                   if (result.data && result.data.length > 0) {
                     table = noteTable; // Use last found table for deletion
@@ -755,18 +821,25 @@ const handler = createMcpHandler(
           
           // If all items are protected, return early
           if (protectedItems.length > 0 && deletedItems.length === 0) {
+            let responseText = `⚠️ Cannot delete protected ${entity_type}${protectedItems.length > 1 ? 's' : ''}: ${protectedItems.join(', ')}`;
+            
+            // Still report invalid IDs even when everything is protected
+            if (invalidIds.length > 0) {
+              responseText += `\n❌ Invalid UUID format: ${invalidIds.join(', ')}`;
+            }
+            
             return {
               content: [{
                 type: 'text',
-                text: `⚠️ Cannot delete protected ${entity_type}${protectedItems.length > 1 ? 's' : ''}: ${protectedItems.join(', ')}`
+                text: responseText
               }]
             };
           }
           
           // Perform deletion for non-protected items
           if (deletedItems.length > 0) {
-            const allowedIds = ids.filter(reqId => {
-              // Filter out protected item IDs
+            const allowedIds = validIds.filter(reqId => {
+              // Filter out protected item IDs  
               if (entity_type === 'person') {
                 return !protectedItems.some(item => item.includes('primary user'));
               } else if (entity_type === 'project') {
@@ -825,7 +898,13 @@ const handler = createMcpHandler(
           }
           
           if (!responseText) {
-            responseText = `❌ No ${entity_type}s found to delete with provided ID${isBulk ? 's' : ''}: ${ids.join(', ')}`;
+            responseText = `❌ No ${entity_type}s found to delete with provided ID${isBulk ? 's' : ''}: ${validIds.join(', ')}`;
+          }
+          
+          // Report invalid IDs if any
+          if (invalidIds.length > 0) {
+            if (responseText) responseText += '\n';
+            responseText += `❌ Invalid UUID format: ${invalidIds.join(', ')}`;
           }
           
           return {
