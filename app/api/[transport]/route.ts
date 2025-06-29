@@ -47,8 +47,15 @@ function safeCount(countObj: any): number {
 }
 
 function isValidUUID(str: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(str);
+  if (!str || typeof str !== 'string') return false;
+  
+  // Trim whitespace and normalize
+  const cleanStr = str.trim().toLowerCase();
+  
+  // More flexible UUID regex - accepts standard UUIDs
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  
+  return uuidRegex.test(cleanStr);
 }
 
 const handler = createMcpHandler(
@@ -702,7 +709,7 @@ const handler = createMcpHandler(
           const isBulk = Array.isArray(id);
           const ids = isBulk ? id : [id];
           
-          // Validate UUIDs and separate valid from invalid
+          // Validate UUIDs and separate valid from invalid (improved version)
           const validIds = ids.filter(isValidUUID);
           const invalidIds = ids.filter(id => !isValidUUID(id));
           
